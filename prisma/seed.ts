@@ -15,14 +15,17 @@ const userData: Prisma.usersCreateInput[] = [
   {
     email: 'alice@example.com',
     name: 'Alice',
+    password: 'password123',
   },
   {
     email: 'bob@example.com',
     name: 'Bob',
+    password: 'password456',
   },
   {
     email: 'carol@example.com',
     name: 'Carol',
+    password: 'password789',
   },
 ];
 

@@ -11,11 +11,17 @@ export class GetUsersResponseDto {
     description: 'The name of the user',
     example: 'John Smith',
   })
-  name!: string;
+  name!: string | null;
 
   @ApiProperty({
     description: 'The email address of the user',
     example: 'john.smith@example.com',
   })
   email!: string;
+
+  @ApiProperty({
+    description: 'The password of the user',
+    example: 'hashed-password',
+  })
+  password!: string | null;
 }
