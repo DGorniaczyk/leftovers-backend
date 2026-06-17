@@ -7,11 +7,11 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('Leftovers API')
-    .setDescription('The Leftovers API description')
+    .setDescription('Api documentation for Leftovers application')
     .setVersion('1.0')
-    .addTag('leftovers')
     .build();
   const document = SwaggerModule.createDocument(app, config);
+
   SwaggerModule.setup('api', app, document);
 
   await app.listen(process.env.PORT ?? 3000);
