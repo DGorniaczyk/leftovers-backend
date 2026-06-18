@@ -10,8 +10,9 @@ export class AuthController {
   @ApiOperation({ summary: 'User signup' })
   @ApiResponse({ status: 201, description: 'User successfully signed up' })
   @ApiResponse({ status: 409, description: 'User already exists' })
+  @ApiResponse({ status: 400, description: 'User data is invalid' })
   @Post('signup')
-  async signup(@Body() createUserDto: CreateUserDto) {
+  async signUp(@Body() createUserDto: CreateUserDto) {
     return this.authService.signUp(createUserDto.email, createUserDto.password);
   }
 }

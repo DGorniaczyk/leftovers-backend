@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
 
@@ -10,7 +14,10 @@ export class AuthService {
     // Check if user already exists
     const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) {
-      throw new BadRequestException('User already exists');
+      throw new ConflictException('User already exists');
+    }
+    if (!email || !password) {
+      throw new BadRequestException('Email/Password is invalid');
     }
 
     const hashedPassword = await bcrypt.hash(password, bcrypt.genSaltSync());
