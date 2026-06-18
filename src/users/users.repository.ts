@@ -8,4 +8,19 @@ export class UsersRepository {
   async findAll() {
     return this.prisma.users.findMany();
   }
+
+  async findByEmail(email: string) {
+    return this.prisma.users.findUnique({
+      where: { email },
+    });
+  }
+
+  async create(email: string, passwordhash: string) {
+    return this.prisma.users.create({
+      data: {
+        email,
+        password: passwordhash,
+      },
+    });
+  }
 }

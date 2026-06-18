@@ -5,17 +5,18 @@ export class GetUsersResponseDto {
     description: 'The unique identifier of the user',
     example: '420',
   })
-  id!: string;
+  id: string;
 
   @ApiProperty({
     description: 'The name of the user',
     example: 'John Smith',
+    nullable: true,
   })
-  name!: string;
+  name: string | null;
 
   @ApiProperty({
     description: 'The email address of the user',
     example: 'john.smith@example.com',
   })
-  email!: string;
+  email: string;
 }
