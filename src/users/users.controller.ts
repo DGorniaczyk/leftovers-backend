@@ -1,11 +1,11 @@
 import { Controller, Get } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { ApiOkResponse, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { GetUsersResponseDto } from './dtos/get-users.dto';
+import { ApiOkResponse, ApiOperation } from '@nestjs/swagger';
+import { GetUsersResponseDto } from './dto/get-users.dto';
 
 @Controller()
 export class UsersController {
-  constructor(private usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) {}
 
   @ApiOperation({ summary: 'Get all users' })
   @ApiOkResponse({
@@ -14,6 +14,7 @@ export class UsersController {
   })
   @Get()
   async findAll(): Promise<GetUsersResponseDto[]> {
-    return this.usersService.findAll();
+    const users = await this.usersService.findAll();
+    return users.map(({ password, ...user }) => user);
   }
 }
