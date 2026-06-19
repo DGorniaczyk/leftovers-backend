@@ -11,17 +11,17 @@ jest.mock('../users/users.service', () => ({
 }));
 
 describe('AuthController', () => {
-  let authcontroller: AuthController;
+  let authController: AuthController;
   let authService: AuthService;
 
   beforeEach(async () => {
-    const moduleref: TestingModule = await Test.createTestingModule({
+    const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
       providers: [AuthService, UsersService],
     }).compile();
 
-    authcontroller = moduleref.get(AuthController);
-    authService = moduleref.get(AuthService);
+    authController = module.get(AuthController);
+    authService = module.get(AuthService);
   });
 
   describe('signup', () => {
@@ -32,7 +32,7 @@ describe('AuthController', () => {
         .spyOn(authService, 'signUp')
         .mockResolvedValue({ id: '1', email });
 
-      await authcontroller.signUp({ email, password });
+      await authController.signUp({ email, password });
 
       expect(signUpSpy).toHaveBeenCalledWith(email, password);
     });
@@ -45,7 +45,7 @@ describe('AuthController', () => {
         .spyOn(authService, 'signUp')
         .mockRejectedValue(new Error('User already exists'));
 
-      await expect(authcontroller.signUp({ email, password })).rejects.toThrow(
+      await expect(authController.signUp({ email, password })).rejects.toThrow(
         'User already exists',
       );
     });
@@ -58,7 +58,7 @@ describe('AuthController', () => {
         .spyOn(authService, 'signUp')
         .mockRejectedValue(new Error('Invalid credentials'));
 
-      await expect(authcontroller.signUp({ email, password })).rejects.toThrow(
+      await expect(authController.signUp({ email, password })).rejects.toThrow(
         'Invalid credentials',
       );
     });

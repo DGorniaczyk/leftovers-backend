@@ -3,10 +3,21 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
-import { afterEach } from 'node:test';
+import { PrismaService } from './../src/prisma/prisma.service';
 
 describe('AuthController (e2e)', () => {
   let app: INestApplication<App>;
+  let prisma: PrismaService;
+
+  const user = {
+    email: 'test@example.com',
+    password: 'password123',
+  };
+
+  const invalidCredentialsUser = {
+    email: 'test',
+    password: '',
+  };
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -15,42 +26,36 @@ describe('AuthController (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     await app.init();
+    prisma = app.get<PrismaService>(PrismaService);
   });
 
-  const user = {
-    email: 'test@example.com',
-    password: 'password123',
-  };
+  describe('auth/signup', () => {
+    it('should return bad request for invalid credentials', () => {
+      return request(app.getHttpServer())
+        .post('/auth/signup')
+        .send(invalidCredentialsUser)
+        .expect(400);
+    });
 
-  const badUser = {
-    email: 'test',
-    password: '',
-  };
+    it('should return conflict for existing user', async () => {
+      await request(app.getHttpServer()).post('/auth/signup').send(user);
 
-  it('{POST} - register user with bad credentials', () => {
-    return request(app.getHttpServer())
-      .post('/auth/signup')
-      .send(badUser)
-      .expect(400);
-  });
+      return request(app.getHttpServer())
+        .post('/auth/signup')
+        .send(user)
+        .expect(409);
+    });
 
-  it('{POST} - register user that already exists', async () => {
-    await request(app.getHttpServer()).post('/auth/signup').send(user);
-
-    return request(app.getHttpServer())
-      .post('/auth/signup')
-      .send(user)
-      .expect(409);
-  });
-
-  it('{POST} - register user', () => {
-    return request(app.getHttpServer())
-      .post('/auth/signup')
-      .send(user)
-      .expect(201);
+    it('should register user', () => {
+      return request(app.getHttpServer())
+        .post('/auth/signup')
+        .send(user)
+        .expect(201);
+    });
   });
 
   afterEach(async () => {
+    await prisma.users.deleteMany({});
     await app.close();
   });
 });
