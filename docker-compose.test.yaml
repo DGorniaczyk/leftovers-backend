@@ -1,14 +1,10 @@
 services:
   db:
+    container_name: leftovers-test-db
     image: postgres:18.4-alpine3.23
     restart: always
     shm_size: 128mb
     env_file:
       - test.env
-    container_name: leftovers-test-db
-    environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - '${DB_PORT}:5432'
