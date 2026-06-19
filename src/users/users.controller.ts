@@ -1,7 +1,8 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { ApiOkResponse, ApiOperation } from '@nestjs/swagger';
 import { GetUsersResponseDto } from './dto/get-users.dto';
+import { JwtAuthGuard } from 'src/auth/jwt-auth-guard';
 
 @Controller()
 export class UsersController {
@@ -12,6 +13,7 @@ export class UsersController {
     description: 'Successfully retrieved users',
     type: [GetUsersResponseDto],
   })
+  @UseGuards(JwtAuthGuard)
   @Get()
   async findAll(): Promise<GetUsersResponseDto[]> {
     const users = await this.usersService.findAll();
