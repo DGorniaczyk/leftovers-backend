@@ -22,6 +22,10 @@ describe('AuthService', () => {
     usersService = module.get(UsersService);
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   describe('signUp', () => {
     it('should call UsersService.findByEmail with correct email', async () => {
       const email = 'test@example.com';
@@ -53,11 +57,26 @@ describe('AuthService', () => {
       const email = 'test@example.com';
       const password = 'password123';
       jest.spyOn(usersService, 'findByEmail').mockResolvedValue(null);
+      const bcrypt = require('bcrypt');
+      // Spy on bcrypt.hash but allow it to call the real implementation
+      const hashSpy = jest.spyOn(bcrypt, 'hash');
+
       await authService.signUp(email, password);
-      expect(usersService.create).toHaveBeenCalledWith(
-        email,
-        expect.any(String),
-      );
+
+      // Ensure create was called and capture the password argument
+      expect(usersService.create).toHaveBeenCalled();
+      const calledArgs = (usersService.create as jest.Mock).mock.calls[0];
+      const passedPasswordHash = calledArgs[1];
+
+      // The stored password should not equal the plain password
+      expect(passedPasswordHash).not.toEqual(password);
+
+      // And bcrypt.compare should validate the hash matches the original password
+      const match = await bcrypt.compare(password, passedPasswordHash);
+      expect(match).toBe(true);
+
+      // restore the spy
+      hashSpy.mockRestore();
     });
   });
 });
