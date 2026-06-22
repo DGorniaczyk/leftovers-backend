@@ -1,0 +1,14 @@
+services:
+  db:
+    container_name: leftovers-test-db
+    image: postgres:18.4-alpine3.23
+    restart: always
+    shm_size: 128mb
+    networks:
+      - leftovers_network_test
+    env_file: test.env
+    ports:
+      - '${DB_PORT}:5432'
+networks:
+  leftovers_network_test:
+    driver: bridge
