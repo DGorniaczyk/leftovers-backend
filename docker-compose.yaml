@@ -1,11 +1,13 @@
 services:
-  db:
+  db_dev:
     container_name: leftovers-dev-db
     image: postgres:18.4-alpine3.23
     volumes:
       - postgres_data:/var/lib/postgresql/18/docker
     restart: always
     shm_size: 128mb
+    networks:
+      - leftovers_network_dev
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -14,3 +16,6 @@ services:
       - '${DB_PORT}:5432'
 volumes:
   postgres_data:
+networks:
+  leftovers_network_dev:
+    driver: bridge
