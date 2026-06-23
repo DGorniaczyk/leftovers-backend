@@ -10,8 +10,59 @@
     {
       "name": "Users",
       "request": {
+        "auth": {
+          "type": "jwt",
+          "jwt": [
+            {
+              "key": "header",
+              "value": "{}",
+              "type": "string"
+            },
+            {
+              "key": "secret",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "key": "payload",
+              "value": "{}",
+              "type": "string"
+            },
+            {
+              "key": "algorithm",
+              "value": "HS256",
+              "type": "string"
+            },
+            {
+              "key": "isSecretBase64Encoded",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "key": "addTokenTo",
+              "value": "header",
+              "type": "string"
+            },
+            {
+              "key": "headerPrefix",
+              "value": "Bearer",
+              "type": "string"
+            },
+            {
+              "key": "queryParamKey",
+              "value": "token",
+              "type": "string"
+            }
+          ]
+        },
         "method": "GET",
-        "header": [],
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer <token>",
+            "type": "text"
+          }
+        ],
         "url": {
           "raw": "http://localhost:3000/",
           "protocol": "http",
@@ -33,7 +84,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"email\": \"testuser@example.com\",\n  \"password\": \"password123\"\n}",
+          "raw": "{\n  \"email\": \"\",\n  \"password\": \"\"\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -50,6 +101,35 @@
           "path": [
             "auth",
             "signup"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"\",\n  \"password\": \"\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:3000/auth/login",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "auth",
+            "login"
           ]
         }
       },

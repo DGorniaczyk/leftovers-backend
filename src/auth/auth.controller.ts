@@ -1,7 +1,11 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ApiResponse, ApiOperation } from '@nestjs/swagger';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { Request } from '@nestjs/common';
+import { LoginResponse } from './dto/responses/login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -14,5 +18,20 @@ export class AuthController {
   @Post('signup')
   async signUp(@Body() createUserDto: CreateUserDto) {
     return this.authService.signUp(createUserDto.email, createUserDto.password);
+  }
+
+  @ApiOperation({ summary: 'User login' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'User successfully logged in',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Invalid credentials',
+  })
+  @UseGuards(AuthGuard('local'))
+  @Post('login')
+  async login(@Request() req): Promise<LoginResponse> {
+    return await this.authService.login(req.user);
   }
 }
