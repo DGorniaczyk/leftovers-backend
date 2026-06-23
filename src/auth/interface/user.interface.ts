@@ -6,6 +6,6 @@ export interface UserJwtPayload {
 }
 
 export interface User {
-  readonly userID: string;
+  readonly userId: string;
   readonly email: string;
 }
