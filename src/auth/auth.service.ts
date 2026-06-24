@@ -15,6 +15,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
+  // This is to be depricated at a later date as we will be using the verify mail version
   async signUp(email: string, password: string) {
     // Check if user already exists
     const existingUser = await this.usersService.findByEmail(email);
@@ -24,6 +25,15 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(password, bcrypt.genSaltSync());
     return this.usersService.create(email, hashedPassword);
+  }
+
+  async register(email: string, password: string) {
+    const existingUser = await this.usersService.findByEmail(email);
+    if (existingUser) {
+      throw new ConflictException('User already exists!');
+    }
+
+    const hashedPassword = await bcrypt.hash(password, bcrypt.genSaltSync());
   }
 
   async validateUser(email: string, password: string) {
