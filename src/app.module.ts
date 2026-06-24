@@ -4,10 +4,17 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { MailerService } from './mailer/mailer.service';
+import { MailerModule } from './mailer/mailer.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), UsersModule, AuthModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    UsersModule,
+    AuthModule,
+    MailerModule,
+  ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, MailerService],
 })
 export class AppModule {}
