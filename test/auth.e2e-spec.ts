@@ -1,9 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, HttpStatus } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/prisma/prisma.service';
+import { configureApp } from './../src/app.config';
 
 describe('AuthController (e2e)', () => {
   let app: INestApplication<App>;
@@ -11,7 +12,7 @@ describe('AuthController (e2e)', () => {
 
   const user = {
     email: 'test@example.com',
-    password: 'password123',
+    password: 'Password123!',
   };
 
   const invalidCredentialsUser = {
@@ -25,6 +26,7 @@ describe('AuthController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    configureApp(app);
     await app.init();
     prisma = app.get<PrismaService>(PrismaService);
   });
@@ -51,6 +53,43 @@ describe('AuthController (e2e)', () => {
         .post('/auth/signup')
         .send(user)
         .expect(201);
+    });
+  });
+
+  describe('auth/login', () => {
+    beforeEach(async () => {
+      await request(app.getHttpServer()).post('/auth/signup').send(user);
+    });
+
+    it('should return unauthorized for malformed credentials', () => {
+      return request(app.getHttpServer())
+        .post('/auth/login')
+        .send(invalidCredentialsUser)
+        .expect(401);
+    });
+
+    it('should return unauthorized for a non-existent user', () => {
+      return request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email: 'doesnotexist@example.com', password: 'Password123!' })
+        .expect(401);
+    });
+
+    it('should return unauthorized for an incorrect password', () => {
+      return request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email: user.email, password: 'WrongPassword123!' })
+        .expect(401);
+    });
+
+    it('should log in successfully and return an access token', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send(user)
+        .expect(HttpStatus.OK);
+
+      expect(response.body).toHaveProperty('accessToken');
+      expect(typeof response.body.accessToken).toBe('string');
     });
   });
 
