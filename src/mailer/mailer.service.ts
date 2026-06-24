@@ -69,14 +69,14 @@ export class MailerService {
 
     if (templateDto.template) {
       const srcRoot = path.resolve(process.cwd(), 'src');
-      const tplPath = path.join(
+      const templatePath = path.join(
         srcRoot,
         'mailer/templates',
         `${templateDto.template}.hbs`,
       );
       try {
-        const tplSrc = await fs.readFile(tplPath, 'utf8');
-        const tpl = Handlebars.compile(tplSrc);
+        const templateSource = await fs.readFile(templatePath, 'utf8');
+        const tpl = Handlebars.compile(templateSource);
         html = tpl(mergedContext);
       } catch (err) {
         console.error('Failed to render template', err);
@@ -99,6 +99,6 @@ export class MailerService {
     const info = await transporter.sendMail(mailOptions);
     const previewUrl = nodemailer.getTestMessageUrl(info);
     console.log('Preview URL: %s', previewUrl);
-    return { success: true, info };
+    return { success: true, info, status: 'success' };
   }
 }

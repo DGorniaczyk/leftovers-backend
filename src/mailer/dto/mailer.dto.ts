@@ -4,29 +4,68 @@ import {
   IsString,
   IsEmail,
   IsArray,
-  IsObject,
+  ValidateNested,
+  registerDecorator,
+  ValidationOptions,
+  ValidationArguments,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import type { Address } from 'nodemailer/lib/mailer';
+
+export class AddressDto {
+  @ApiProperty({ example: 'bob@example.com' })
+  @IsEmail()
+  address: string;
+
+  @ApiPropertyOptional({ example: 'Bob' })
+  @IsOptional()
+  @IsString()
+  name?: string;
+}
+
+function IsAddress(validationOptions?: ValidationOptions) {
+  return function (object: object, propertyName: string) {
+    registerDecorator({
+      name: 'isAddress',
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      validator: {
+        validate(value: any) {
+          if (typeof value === 'string') {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+          }
+          return (
+            typeof value === 'object' &&
+            value !== null &&
+            typeof value.address === 'string'
+          );
+        },
+        defaultMessage(args: ValidationArguments) {
+          return `${args.property} must be an email string or { address, name } object`;
+        },
+      },
+    });
+  };
+}
 
 export class SendEmailDto {
   @ApiPropertyOptional({
     description: 'From address',
-    type: String,
     example: 'sender@example.com',
   })
   @IsOptional()
-  @IsEmail()
-  from: Address;
+  @IsAddress()
+  from?: string | AddressDto;
 
   @ApiProperty({
     description: 'Recipient addresses',
-    type: [Object],
     example: ['alice@example.com', { address: 'bob@example.com', name: 'Bob' }],
   })
   @IsNotEmpty()
   @IsArray()
-  recipients: Address[];
+  @IsAddress({ each: true })
+  recipients: (string | AddressDto)[];
 
   @ApiProperty({ description: 'Email subject' })
   @IsString()

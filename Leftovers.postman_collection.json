@@ -134,6 +134,35 @@
         }
       },
       "response": []
+    },
+    {
+      "name": "sendEmail",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"recipients\": [\"\"],\n  \"subject\": \"\",\n  \"html\": \"\",\n  \"text\": \"\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:3000/mailer/sendEmail",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "mailer",
+            "sendEmail"
+          ]
+        }
+      },
+      "response": []
     }
   ]
 }

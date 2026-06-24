@@ -2,13 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { MailerService } from './mailer.service';
 import { ConfigService } from '@nestjs/config';
 import { promises as fs } from 'fs';
+import * as nodemailer from 'nodemailer';
+import * as path from 'path';
+import { SendEmailDto } from './dto/mailer.dto';
 
-const nodemailer = require('nodemailer');
-
-let transporter;
-let testAccount;
-let verifySpy: jest.SpyInstance;
-let sendMailSpy: jest.SpyInstance;
+// Replace the whole module with an auto-mock so Jest never has to
+// redefine a property on the real (non-configurable) namespace object.
+jest.mock('nodemailer');
 
 const mockConfigService = {
   getOrThrow: jest.fn((key: string) => {
@@ -31,30 +31,33 @@ const mockConfigService = {
   }),
 };
 
-beforeAll(async () => {
-  testAccount = await nodemailer.createTestAccount();
-  transporter = nodemailer.createTransport({
-    host: testAccount.smtp.host,
-    port: testAccount.smtp.port,
-    secure: testAccount.smtp.secure,
-    auth: {
-      user: testAccount.user,
-      pass: testAccount.pass,
-    },
-  });
-});
-
 describe('MailerService', () => {
   let service: MailerService;
-
-  beforeAll(() => {
-    jest.spyOn(nodemailer, 'createTransport').mockReturnValue(transporter as any);
-    jest.spyOn(nodemailer, 'getTestMessageUrl').mockReturnValue('https://ethereal.email/message/preview');
-    verifySpy = jest.spyOn(transporter, 'verify');
-    sendMailSpy = jest.spyOn(transporter, 'sendMail');
-  });
+  let verifySpy: jest.Mock;
+  let sendMailSpy: jest.Mock;
 
   beforeEach(async () => {
+    verifySpy = jest.fn().mockResolvedValue(true);
+
+    // Mirrors back whatever "to" was passed in, so info.accepted reflects
+    // the actual recipient instead of being a hardcoded fake value.
+    sendMailSpy = jest.fn().mockImplementation((mailOptions) =>
+      Promise.resolve({
+        accepted: Array.isArray(mailOptions.to)
+          ? mailOptions.to
+          : [mailOptions.to],
+        response: '250 OK',
+      }),
+    );
+
+    (nodemailer.createTransport as jest.Mock).mockReturnValue({
+      verify: verifySpy,
+      sendMail: sendMailSpy,
+    });
+    (nodemailer.getTestMessageUrl as jest.Mock).mockReturnValue(
+      'https://ethereal.email/message/preview',
+    );
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MailerService,
@@ -63,10 +66,13 @@ describe('MailerService', () => {
     }).compile();
 
     service = module.get<MailerService>(MailerService);
-    verifySpy.mockClear();
-    sendMailSpy.mockClear();
-    (mockConfigService.getOrThrow as jest.Mock).mockClear();
-    (mockConfigService.get as jest.Mock).mockClear();
+
+    mockConfigService.getOrThrow.mockClear();
+    mockConfigService.get.mockClear();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('should be defined', () => {
@@ -74,21 +80,24 @@ describe('MailerService', () => {
   });
 
   it('should send HTML and text email using provided dto', async () => {
-    const dto = {
-      from: 'sender@example.com',
-      recipients: ['recipient@example.com'],
+    const fromEmail = 'sender@example.com';
+    const recipientEmail = 'recipient@example.com';
+
+    const dto: SendEmailDto = {
+      from: fromEmail,
+      recipients: [recipientEmail],
       subject: 'Test',
       html: '<b>Your email content here</b>',
       text: 'Your text content',
-    } as any;
+    };
 
     const result = await service.sendEmail(dto);
 
     expect(verifySpy).toHaveBeenCalled();
     expect(sendMailSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        from: 'sender@example.com',
-        to: ['recipient@example.com'],
+        from: fromEmail,
+        to: [recipientEmail],
         subject: 'Test',
         html: '<b>Your email content here</b>',
         text: 'Your text content',
@@ -97,40 +106,46 @@ describe('MailerService', () => {
     expect(result).toEqual(
       expect.objectContaining({
         success: true,
+        status: 'success',
         info: expect.objectContaining({
-          accepted: ['recipient@example.com'],
+          accepted: [recipientEmail],
         }),
       }),
     );
   });
 
   it('should render a template when templateDto.template is provided', async () => {
-    const dto = {
+    const recipientEmail = 'recipient@example.com';
+
+    const dto: SendEmailDto = {
       from: 'sender@example.com',
-      recipients: ['recipient@example.com'],
+      recipients: [recipientEmail],
       subject: 'Template Test',
       html: '<b>fallback</b>',
       text: 'fallback text',
-    } as any;
+    };
 
     jest.spyOn(fs, 'readFile').mockResolvedValue('<p>Hello {{name}}</p>');
 
-    const result = await service.sendEmail(dto, { template: 'welcome' } as any);
+    const result = await service.sendEmail(dto, { template: 'welcome' });
 
     expect(fs.readFile).toHaveBeenCalledWith(
-      expect.stringContaining('src/mailer/templates/welcome.hbs'),
+      expect.stringContaining(
+        path.join('src', 'mailer', 'templates', 'welcome.hbs'),
+      ),
       'utf8',
     );
     expect(sendMailSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        html: '<p>Hello recipient@example.com</p>',
+        html: `<p>Hello ${recipientEmail}</p>`,
       }),
     );
     expect(result).toEqual(
       expect.objectContaining({
         success: true,
+        status: 'success',
         info: expect.objectContaining({
-          accepted: ['recipient@example.com'],
+          accepted: [recipientEmail],
         }),
       }),
     );

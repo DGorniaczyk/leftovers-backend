@@ -4,11 +4,12 @@ import {
   Body,
   UsePipes,
   ValidationPipe,
-  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { MailerService } from './mailer.service';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { SendEmailDto } from './dto/mailer.dto';
+import { SendEmailResponse } from './dto/responses/send-email.dto';
 
 @ApiTags('mailer')
 @Controller('mailer')
@@ -16,10 +17,11 @@ export class MailerController {
   constructor(private readonly mailerService: MailerService) {}
 
   @Post('sendEmail')
-  @HttpCode(201)
-  @ApiResponse({ status: 201, description: 'Email sent successfully' })
-  @UsePipes(new ValidationPipe({ whitelist: true }))
-  async sendEmail(@Body() dto: SendEmailDto) {
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Email sent successfully',
+  })
+  sendEmail(@Body() dto: SendEmailDto): Promise<SendEmailResponse> {
     return this.mailerService.sendEmail(dto);
   }
 }
