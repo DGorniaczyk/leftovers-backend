@@ -1,12 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
-import { GetTemplateDto, SendEmailDto } from './dto/mailer.dto';
+import { GetTemplateDto, SendEmailDto, AddressDto } from './dto/mailer.dto';
 import { ConfigService } from '@nestjs/config';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import * as Handlebars from 'handlebars';
-import type { Address } from 'nodemailer/lib/mailer';
-import { IsOptional } from 'class-validator';
 
 interface NormalizedRecipient {
   address: string;
@@ -17,7 +15,9 @@ interface NormalizedRecipient {
 export class MailerService {
   constructor(private readonly configService: ConfigService) {}
 
-  private normalizeRecipient(recipient: Address): NormalizedRecipient {
+  private normalizeRecipient(
+    recipient: string | AddressDto,
+  ): NormalizedRecipient {
     if (typeof recipient === 'string') {
       return { address: recipient };
     }
@@ -54,7 +54,7 @@ export class MailerService {
       this.configService.get<string>('EMAIL_USER');
 
     const normalizedRecipients = dto.recipients.map((recipient) =>
-      this.normalizeRecipient(recipient as Address),
+      this.normalizeRecipient(recipient),
     );
 
     let html = dto.html;
@@ -65,6 +65,7 @@ export class MailerService {
       recipient: firstRecipient,
       name: firstRecipient?.name || firstRecipient?.address,
       email: firstRecipient?.address,
+      ...templateDto.context,
     };
 
     if (templateDto.template) {

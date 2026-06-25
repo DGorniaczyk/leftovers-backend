@@ -6,12 +6,15 @@ import { JwtModule } from '@nestjs/jwt';
 import { LocalStrategy } from './local.strategy';
 import { JwtStrategy } from './jwt.strategy';
 import { PassportModule } from '@nestjs/passport';
+import { MailerModule } from 'src/mailer/mailer.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { SignupRequestsRepository } from './signup-requests.repository';
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
+    MailerModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -21,7 +24,12 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       }),
     }),
   ],
-  providers: [AuthService, LocalStrategy, JwtStrategy],
+  providers: [
+    AuthService,
+    LocalStrategy,
+    JwtStrategy,
+    SignupRequestsRepository,
+  ],
   controllers: [AuthController],
 })
 export class AuthModule {}
