@@ -94,6 +94,9 @@ export class AuthService {
     if (!request) {
       throw new BadRequestException('Invalid or expired token');
     }
+    if (request.email !== dto.email) {
+      throw new BadRequestException('Invalid or expired token');
+    }
     if (request.expires_at < new Date()) {
       throw new BadRequestException('Token expired');
     }
