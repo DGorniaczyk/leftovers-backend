@@ -24,12 +24,7 @@ import { SignupRequestsRepository } from './signup-requests.repository';
       }),
     }),
   ],
-  providers: [
-    AuthService,
-    LocalStrategy,
-    JwtStrategy,
-    SignupRequestsRepository,
-  ],
+  providers: [AuthService, LocalStrategy, JwtStrategy, SignupRequestsRepository],
   controllers: [AuthController],
 })
 export class AuthModule {}

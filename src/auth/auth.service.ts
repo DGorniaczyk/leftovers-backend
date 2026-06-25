@@ -46,12 +46,9 @@ export class AuthService {
       throw new ConflictException('Email already registered');
     }
 
-    const existingRegisterRequest =
-      await this.signUpRequestRepository.findByEmail(dto.email);
+    const existingRegisterRequest = await this.signUpRequestRepository.findByEmail(dto.email);
 
-    const hasExpired =
-      existingRegisterRequest &&
-      existingRegisterRequest.expires_at < new Date();
+    const hasExpired = existingRegisterRequest && existingRegisterRequest.expires_at < new Date();
 
     if (existingRegisterRequest && !hasExpired) {
       throw new ConflictException('Email already registered');
@@ -61,10 +58,7 @@ export class AuthService {
       await this.signUpRequestRepository.deleteById(existingRegisterRequest.id);
     }
 
-    const hashedPassword = await bcrypt.hash(
-      dto.password,
-      bcrypt.genSaltSync(),
-    );
+    const hashedPassword = await bcrypt.hash(dto.password, bcrypt.genSaltSync());
 
     const token = randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -76,8 +70,7 @@ export class AuthService {
       expires_at: expiresAt,
     });
 
-    const pageUrl =
-      this.configService.get<string>('PAGE_URL') || 'http://localhost:3000';
+    const pageUrl = this.configService.get<string>('PAGE_URL') || 'http://localhost:3000';
 
     const confirmLink = `${pageUrl}/confirm-register?email=${encodeURIComponent(
       dto.email,

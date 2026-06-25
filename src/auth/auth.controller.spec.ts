@@ -28,9 +28,7 @@ describe('AuthController', () => {
     it('should call AuthService.signUp with correct parameters', async () => {
       const email = 'test@example.com';
       const password = 'password123';
-      const signUpSpy = jest
-        .spyOn(authService, 'signUp')
-        .mockResolvedValue({ id: '1', email });
+      const signUpSpy = jest.spyOn(authService, 'signUp').mockResolvedValue({ id: '1', email });
 
       await authController.signUp({ email, password });
 
@@ -41,9 +39,7 @@ describe('AuthController', () => {
       const email = 'test@example.com';
       const password = 'password123';
 
-      jest
-        .spyOn(authService, 'signUp')
-        .mockRejectedValue(new Error('User already exists'));
+      jest.spyOn(authService, 'signUp').mockRejectedValue(new Error('User already exists'));
 
       await expect(authController.signUp({ email, password })).rejects.toThrow(
         'User already exists',
@@ -54,9 +50,7 @@ describe('AuthController', () => {
       const email = 'test';
       const password = '';
 
-      jest
-        .spyOn(authService, 'signUp')
-        .mockRejectedValue(new Error('Invalid credentials'));
+      jest.spyOn(authService, 'signUp').mockRejectedValue(new Error('Invalid credentials'));
 
       await expect(authController.signUp({ email, password })).rejects.toThrow(
         'Invalid credentials',
