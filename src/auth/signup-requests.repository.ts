@@ -12,8 +12,8 @@ export class SignupRequestsRepository {
     return row ? this.toDomain(row) : null;
   }
 
-  async findByToken(token: string): Promise<SignupRequest | null> {
-    const row = await this.prisma.signup_requests.findUnique({ where: { token } });
+  async findById(id: string): Promise<SignupRequest | null> {
+    const row = await this.prisma.signup_requests.findUnique({ where: { id } });
     return row ? this.toDomain(row) : null;
   }
 
@@ -23,7 +23,6 @@ export class SignupRequestsRepository {
         email: input.email,
         name: input.name,
         password_hash: input.passwordHash,
-        token: input.token,
         expires_at: input.expiresAt,
       },
     });
@@ -40,7 +39,6 @@ export class SignupRequestsRepository {
       email: row.email,
       name: row.name,
       passwordHash: row.password_hash,
-      token: row.token,
       expiresAt: row.expires_at,
     };
   }

@@ -18,6 +18,23 @@ model users {
   name String?
   email String @unique
   password String
+  recipes recipe[]
+}
+
+model recipe {
+  id String @default(uuid()) @id
+  title String
+  description String?
+  prep_time Int?
+  is_public Boolean @default(true)
+  author_id String
+  author users @relation(fields: [author_id], references: [id])
+  created_at DateTime @default(now())
+  edited_at DateTime @updatedAt
+  rating Int
+  category String?
+  ingredients String
+  steps String
 }
 
 model signup_requests{
@@ -25,7 +42,6 @@ model signup_requests{
   email String @unique
   name String?
   password_hash String
-  token String @unique
   expires_at DateTime
   created_at DateTime @default(now())
 }

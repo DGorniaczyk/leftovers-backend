@@ -49,7 +49,7 @@ export class AuthController {
   })
   @ApiBody({ type: SignUpDto, description: 'User registration data' })
   @ApiOkResponse({
-    description: 'User logged in',
+    description: 'User began registration process',
     schema: { example: { message: 'Confirmation email sent.' } },
   })
   @ApiConflictResponse({

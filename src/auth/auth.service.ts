@@ -9,13 +9,18 @@ import { UsersService } from '../users/users.service';
 import { UsersRepository } from '../users/users.repository';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { TokenExpiredError } from 'jsonwebtoken';
 import { User as AuthenticatedUser } from './interface/user.interface';
 import { User } from '../users/models/user.model';
 import { MailerService } from 'src/mailer/mailer.service';
 import { SignupRequestsRepository } from './signup-requests.repository';
 import { RegisterInput } from './dto/inputs/register.input';
 import { ConfirmRegisterInput } from './dto/inputs/confirm-register.input';
-import { randomBytes } from 'crypto';
+
+interface RegisterJwtPayload {
+  sub: string;
+  email: string;
+}
 
 @Injectable()
 export class AuthService {
@@ -52,26 +57,30 @@ export class AuthService {
       throw new ConflictException('Email already registered');
     }
 
-    if (hasExpired) {
+    if (existingRequest && hasExpired) {
       await this.signUpRequestRepository.deleteById(existingRequest.id);
     }
 
     const passwordHash = await bcrypt.hash(input.password, bcrypt.genSaltSync());
-    const token = randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    await this.signUpRequestRepository.create({
+    const request = await this.signUpRequestRepository.create({
       email: input.email,
       name: input.name,
       passwordHash,
-      token,
       expiresAt,
     });
 
+    const token = await this.jwtService.signAsync(
+      { sub: request.id, email: request.email },
+      {
+        secret: this.configService.getOrThrow<string>('REGISTER_JWT_SECRET'),
+        expiresIn: '24h',
+      },
+    );
+
     const pageUrl = this.configService.get<string>('PAGE_URL') || 'http://localhost:3000';
-    const confirmLink = `${pageUrl}/confirm-register?email=${encodeURIComponent(
-      input.email,
-    )}&token=${encodeURIComponent(token)}`;
+    const confirmLink = `${pageUrl}/confirm-register?token=${encodeURIComponent(token)}`;
 
     await this.mailerService.sendEmail(
       {
@@ -88,12 +97,33 @@ export class AuthService {
   }
 
   async confirmRegister(input: ConfirmRegisterInput): Promise<User> {
-    const request = await this.signUpRequestRepository.findByToken(input.token);
-    if (!request || request.email !== input.email) {
+    let payload: RegisterJwtPayload;
+
+    try {
+      payload = await this.jwtService.verifyAsync<RegisterJwtPayload>(input.token, {
+        secret: this.configService.getOrThrow<string>('REGISTER_JWT_SECRET'),
+      });
+    } catch (err) {
+      if (err instanceof TokenExpiredError) {
+        throw new BadRequestException('Token expired');
+      }
       throw new BadRequestException('Invalid or expired token');
     }
+
+    const request = await this.signUpRequestRepository.findById(payload.sub);
+    if (!request || request.email !== payload.email) {
+      throw new BadRequestException('Invalid or expired token');
+    }
+
     if (request.expiresAt < new Date()) {
+      await this.signUpRequestRepository.deleteById(request.id);
       throw new BadRequestException('Token expired');
+    }
+
+    const existingUser = await this.usersService.findByEmail(request.email);
+    if (existingUser) {
+      await this.signUpRequestRepository.deleteById(request.id);
+      throw new ConflictException('Email already registered');
     }
 
     const user = await this.usersRepository.create({
