@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '../generated/prisma/client';
+import { Prisma, recipe as RecipeRow } from '../generated/prisma/client';
 import { Recipe } from './models/recipe.model';
 import { RecipeQuerySearchDto } from './dto/recipe-query-search.dto';
 
@@ -61,14 +61,12 @@ export class RecipesRepository {
     return row ? this.toDomain(row) : null;
   }
 
-  private toDomain(
-    row: NonNullable<Awaited<ReturnType<typeof this.prisma.recipe.findUnique>>>,
-  ): Recipe {
+  private toDomain(row: RecipeRow): Recipe {
     return {
       id: row.id,
       title: row.title,
       description: row.description,
-      prepTime: row.prep_time,
+      prepTime: row.prep_time_minutes,
       isPublic: row.is_public,
       authorId: row.author_id,
       createdAt: row.created_at,

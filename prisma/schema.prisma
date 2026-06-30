@@ -25,7 +25,7 @@ model recipe {
   id String @default(uuid()) @id
   title String
   description String?
-  prep_time Int?
+  prep_time_minutes Int?
   is_public Boolean @default(true)
   author_id String
   author users @relation(fields: [author_id], references: [id])

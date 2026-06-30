@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { RecipesService } from './recipes.service';
 import { RecipesRepository } from './recipes.repository';
-import { Recipe } from './recipe.model';
+import { Recipe } from './models/recipe.model';
 import { RecipeQuerySearchDto } from './dto/recipe-query-search.dto';
 
 describe('RecipesService', () => {
