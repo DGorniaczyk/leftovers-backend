@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { users as UserRow } from '../generated/prisma/client';
+import { Prisma } from '../generated/prisma/client';
 import { User, CreateUser } from './models/user.model';
 
 @Injectable()
@@ -18,17 +18,26 @@ export class UsersRepository {
   }
 
   async create(input: CreateUser): Promise<User> {
-    const row = await this.prisma.users.create({
-      data: {
-        email: input.email,
-        password: input.passwordHash,
-        name: input.name,
-      },
-    });
-    return this.toDomain(row);
+    try {
+      const row = await this.prisma.users.create({
+        data: {
+          email: input.email,
+          password: input.passwordHash,
+          name: input.name,
+        },
+      });
+      return this.toDomain(row);
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new ConflictException('Email already registered');
+      }
+      throw err;
+    }
   }
 
-  private toDomain(row: UserRow): User {
+  private toDomain(
+    row: NonNullable<Awaited<ReturnType<typeof this.prisma.users.findUnique>>>,
+  ): User {
     return {
       id: row.id,
       email: row.email,
