@@ -9,12 +9,18 @@ import { UsersService } from '../users/users.service';
 import { UsersRepository } from '../users/users.repository';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { User } from './interface/user.interface';
+import { TokenExpiredError } from 'jsonwebtoken';
+import { User as AuthenticatedUser } from './interface/user.interface';
+import { User } from '../users/models/user.model';
 import { MailerService } from 'src/mailer/mailer.service';
 import { SignupRequestsRepository } from './signup-requests.repository';
-import { ConfirmRegisterDto } from './dto/confirm-register.dto';
-import { randomBytes } from 'crypto';
-import { SignUpDto } from './dto/SignUp.dto';
+import { RegisterInput } from './dto/inputs/register-input.dto';
+import { ConfirmRegisterInput } from './dto/inputs/confirm-register-input.dto';
+
+interface RegisterJwtPayload {
+  sub: string;
+  email: string;
+}
 
 @Injectable()
 export class AuthService {
@@ -29,103 +35,117 @@ export class AuthService {
 
   // This is to be depricated at a later date as we will be using the verify mail version
   async signUp(email: string, password: string) {
-    // Check if user already exists
     const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) {
       throw new ConflictException('User already exists');
     }
 
     const hashedPassword = await bcrypt.hash(password, bcrypt.genSaltSync());
-    return this.usersService.create(email, hashedPassword);
+    return this.usersService.create({ email, hashedPassword });
   }
 
-  async register(dto: SignUpDto) {
-    // check if user exists in the user database and if there is already a registration request present
-    const existingUser = await this.usersService.findByEmail(dto.email);
+  async register(input: RegisterInput): Promise<{ message: string }> {
+    const existingUser = await this.usersService.findByEmail(input.email);
     if (existingUser) {
       throw new ConflictException('Email already registered');
     }
 
-    const existingRegisterRequest =
-      await this.signUpRequestRepository.findByEmail(dto.email);
+    const existingRequest = await this.signUpRequestRepository.findByEmail(input.email);
+    const hasExpired = existingRequest && existingRequest.expiresAt < new Date();
 
-    const hasExpired =
-      existingRegisterRequest &&
-      existingRegisterRequest.expires_at < new Date();
-
-    if (existingRegisterRequest && !hasExpired) {
+    if (existingRequest && !hasExpired) {
       throw new ConflictException('Email already registered');
     }
 
-    if (hasExpired) {
-      await this.signUpRequestRepository.deleteById(existingRegisterRequest.id);
+    if (existingRequest && hasExpired) {
+      await this.signUpRequestRepository.deleteById(existingRequest.id);
     }
 
-    const hashedPassword = await bcrypt.hash(
-      dto.password,
-      bcrypt.genSaltSync(),
-    );
-
-    const token = randomBytes(32).toString('hex');
+    const hashedPassword = await bcrypt.hash(input.password, bcrypt.genSaltSync());
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    await this.signUpRequestRepository.create({
-      email: dto.email,
-      name: dto.name,
-      password_hash: hashedPassword,
-      token,
-      expires_at: expiresAt,
+
+    const request = await this.signUpRequestRepository.create({
+      email: input.email,
+      name: input.name,
+      hashedPassword,
+      expiresAt,
     });
 
-    const pageUrl =
-      this.configService.get<string>('PAGE_URL') || 'http://localhost:3000';
+    const token = await this.jwtService.signAsync(
+      { sub: request.id, email: request.email },
+      {
+        secret: this.configService.getOrThrow<string>('REGISTER_JWT_SECRET'),
+        expiresIn: '24h',
+      },
+    );
 
-    const confirmLink = `${pageUrl}/confirm-register?email=${encodeURIComponent(
-      dto.email,
-    )}&token=${encodeURIComponent(token)}`;
+    const pageUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const confirmLink = `${pageUrl}/confirm-register?token=${encodeURIComponent(token)}`;
 
     await this.mailerService.sendEmail(
       {
-        recipients: [{ address: dto.email }],
+        recipients: [{ address: input.email }],
         subject: 'Confirm your account registration',
       },
       {
         template: 'confirm-register',
-        context: { confirmLink, name: dto.name },
+        context: { confirmLink, name: input.name },
       },
     );
+
     return { message: 'Confirmation email sent!' };
   }
 
-  async confirmRegister(dto: ConfirmRegisterDto) {
-    const request = await this.signUpRequestRepository.findByToken(dto.token);
-    if (!request) {
+  async confirmRegister(input: ConfirmRegisterInput): Promise<User> {
+    let payload: RegisterJwtPayload;
+
+    try {
+      payload = await this.jwtService.verifyAsync<RegisterJwtPayload>(input.token, {
+        secret: this.configService.getOrThrow<string>('REGISTER_JWT_SECRET'),
+      });
+    } catch (err) {
+      if (err instanceof TokenExpiredError) {
+        throw new BadRequestException('Token expired');
+      }
       throw new BadRequestException('Invalid or expired token');
     }
-    if (request.expires_at < new Date()) {
+
+    const request = await this.signUpRequestRepository.findById(payload.sub);
+    if (!request || request.email !== payload.email) {
+      throw new BadRequestException('Invalid or expired token');
+    }
+
+    if (request.expiresAt < new Date()) {
+      await this.signUpRequestRepository.deleteById(request.id);
       throw new BadRequestException('Token expired');
     }
 
-    const user = await this.usersRepository.create(
-      request.email,
-      request.password_hash,
-      request.name,
-    );
+    const existingUser = await this.usersService.findByEmail(request.email);
+    if (existingUser) {
+      await this.signUpRequestRepository.deleteById(request.id);
+      throw new ConflictException('Email already registered');
+    }
 
-    this.signUpRequestRepository.deleteById(request.id);
+    const user = await this.usersRepository.create({
+      email: request.email,
+      hashedPassword: request.hashedPassword,
+      name: request.name,
+    });
 
-    return { id: user.id, email: user.email };
+    await this.signUpRequestRepository.deleteById(request.id);
+
+    return user;
   }
 
-  async validateUser(email: string, password: string) {
-    // Check if credentials are valid
+  async validateUser(email: string, password: string): Promise<User> {
     const user = await this.usersService.findByEmail(email);
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    if (!user || !(await bcrypt.compare(password, user.hashedPassword))) {
       throw new UnauthorizedException('Invalid credentials');
     }
     return user;
   }
 
-  async login(user: User) {
+  async login(user: AuthenticatedUser) {
     const payload = { email: user.email, sub: user.userId };
     const accessToken = await this.jwtService.signAsync(payload);
     return { accessToken };

@@ -10,9 +10,16 @@ describe('AuthController (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
 
+  const registrationUser = {
+    email: 'register@example.com',
+    password: 'Password123!',
+    name: 'Jane Doe',
+  };
+
   const user = {
     email: 'test@example.com',
     password: 'Password123!',
+    name: 'John Smith',
   };
 
   const invalidCredentialsUser = {
@@ -42,17 +49,11 @@ describe('AuthController (e2e)', () => {
     it('should return conflict for existing user', async () => {
       await request(app.getHttpServer()).post('/auth/signup').send(user);
 
-      return request(app.getHttpServer())
-        .post('/auth/signup')
-        .send(user)
-        .expect(409);
+      return request(app.getHttpServer()).post('/auth/signup').send(user).expect(409);
     });
 
     it('should register user', () => {
-      return request(app.getHttpServer())
-        .post('/auth/signup')
-        .send(user)
-        .expect(201);
+      return request(app.getHttpServer()).post('/auth/signup').send(user).expect(201);
     });
   });
 
@@ -93,7 +94,85 @@ describe('AuthController (e2e)', () => {
     });
   });
 
+  describe('auth/register', () => {
+    it('should start registration and send confirmation email', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/auth/register')
+        .send(registrationUser)
+        .expect(HttpStatus.OK);
+
+      expect(response.body).toEqual({
+        message: 'Confirmation email sent!',
+      });
+
+      const signupRequest = await prisma.signup_requests.findFirst({
+        where: {
+          email: registrationUser.email,
+        },
+      });
+
+      expect(signupRequest).toBeTruthy();
+      expect(signupRequest?.token).toBeTruthy();
+    });
+
+    it('should reject duplicate registration request', async () => {
+      await request(app.getHttpServer())
+        .post('/auth/register')
+        .send(registrationUser)
+        .expect(HttpStatus.OK);
+
+      await request(app.getHttpServer())
+        .post('/auth/register')
+        .send(registrationUser)
+        .expect(HttpStatus.CONFLICT);
+    });
+  });
+
+  describe('auth/confirm-register', () => {
+    it('should create user from valid token', async () => {
+      await request(app.getHttpServer())
+        .post('/auth/register')
+        .send(registrationUser)
+        .expect(HttpStatus.OK);
+
+      const signupRequest = await prisma.signup_requests.findFirst({
+        where: {
+          email: registrationUser.email,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .post('/auth/confirm-register')
+        .send({
+          email: signupRequest!.email,
+          token: signupRequest!.token,
+        })
+        .expect(HttpStatus.CREATED);
+
+      expect(response.body).toHaveProperty('id');
+      expect(response.body.email).toBe(registrationUser.email);
+
+      const userInDb = await prisma.users.findUnique({
+        where: {
+          email: registrationUser.email,
+        },
+      });
+
+      expect(userInDb).toBeTruthy();
+    });
+
+    it('should reject invalid token', async () => {
+      await request(app.getHttpServer())
+        .post('/auth/confirm-register')
+        .send({
+          token: 'invalid-token',
+        })
+        .expect(HttpStatus.BAD_REQUEST);
+    });
+  });
+
   afterEach(async () => {
+    await prisma.signup_requests.deleteMany({});
     await prisma.users.deleteMany({});
     await app.close();
   });

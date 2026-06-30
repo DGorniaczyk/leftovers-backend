@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpStatus, HttpCode } from '@nestjs/common';
+import { Controller, Post, Body, HttpStatus, HttpCode, Request, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
   ApiResponse,
@@ -10,10 +10,12 @@ import {
 } from '@nestjs/swagger';
 import { ConfirmRegisterDto } from './dto/confirm-register.dto';
 import { SignUpDto } from './dto/SignUp.dto';
-import { UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { Request } from '@nestjs/common';
 import { LoginResponse } from './dto/responses/login.dto';
+import { RegisterInput } from './dto/inputs/register-input.dto';
+import { ConfirmRegisterInput } from './dto/inputs/confirm-register-input.dto';
+import { RegisterConfirmationSentResponse } from './dto/responses/register-confirmation-sent.response';
+import { ConfirmRegisterResponse } from './dto/responses/confirm-register.response';
 
 @Controller('auth')
 export class AuthController {
@@ -33,35 +35,22 @@ export class AuthController {
   }
 
   @ApiOperation({ summary: 'User login' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'User successfully logged in',
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'Invalid credentials',
-  })
+  @ApiResponse({ status: HttpStatus.OK, description: 'User successfully logged in' })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Invalid credentials' })
   @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard('local'))
   @Post('login')
-  async login(@Request() req): Promise<LoginResponse> {
-    return await this.authService.login(req.user);
+  login(@Request() req): Promise<LoginResponse> {
+    return this.authService.login(req.user);
   }
 
   @ApiOperation({
     summary: 'Start the signup process to get an email with confirmation link',
   })
-  @ApiBody({
-    type: SignUpDto,
-    description: 'User registration data',
-  })
+  @ApiBody({ type: SignUpDto, description: 'User registration data' })
   @ApiOkResponse({
-    description: 'User logged in',
-    schema: {
-      example: {
-        message: 'Confirmation email sent.',
-      },
-    },
+    description: 'User began registration process',
+    schema: { example: { message: 'Confirmation email sent.' } },
   })
   @ApiConflictResponse({
     description: 'User already exists or has a not confirmed signup request',
@@ -75,25 +64,26 @@ export class AuthController {
   })
   @Post('register')
   @HttpCode(HttpStatus.OK)
-  register(@Body() dto: SignUpDto) {
-    return this.authService.register(dto);
+  async register(@Body() dto: SignUpDto): Promise<RegisterConfirmationSentResponse> {
+    const input: RegisterInput = {
+      email: dto.email,
+      name: dto.name,
+      password: dto.password,
+    };
+
+    const result = await this.authService.register(input);
+
+    return RegisterConfirmationSentResponse.from(result);
   }
 
-  @ApiOperation({
-    summary: 'Confirm registration using email and token',
-  })
+  @ApiOperation({ summary: 'Confirm registration using email and token' })
   @ApiBody({
     type: ConfirmRegisterDto,
     description: 'Email and verification token received via email',
   })
   @ApiOkResponse({
-    description: 'User account sucessfuly created',
-    schema: {
-      example: {
-        id: 123,
-        email: 'john.doe@email.com',
-      },
-    },
+    description: 'User account successfully created',
+    schema: { example: { id: 'a3f1c2e4-...', email: 'john.doe@email.com' } },
   })
   @ApiBadRequestResponse({
     description: 'Invalid or expired token, or no valid email in the request',
@@ -105,9 +95,14 @@ export class AuthController {
       },
     },
   })
-  @ApiBadRequestResponse({ description: 'Invalid or expired token or email ' })
   @Post('confirm-register')
-  ConfirmRegistration(@Body() dto: ConfirmRegisterDto) {
-    return this.authService.confirmRegister(dto);
+  async confirmRegistration(@Body() dto: ConfirmRegisterDto): Promise<ConfirmRegisterResponse> {
+    const input: ConfirmRegisterInput = {
+      token: dto.token,
+    };
+
+    const user = await this.authService.confirmRegister(input);
+
+    return ConfirmRegisterResponse.from(user);
   }
 }
