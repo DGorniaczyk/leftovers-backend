@@ -1,6 +1,6 @@
 import { Injectable, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '../generated/prisma/client';
+import { Prisma, users as UserRow } from '../generated/prisma/client';
 import { User, CreateUser } from './models/user.model';
 
 @Injectable()
@@ -22,7 +22,7 @@ export class UsersRepository {
       const row = await this.prisma.users.create({
         data: {
           email: input.email,
-          password: input.passwordHash,
+          password: input.hashedPassword,
           name: input.name,
         },
       });
@@ -35,14 +35,12 @@ export class UsersRepository {
     }
   }
 
-  private toDomain(
-    row: NonNullable<Awaited<ReturnType<typeof this.prisma.users.findUnique>>>,
-  ): User {
+  private toDomain(row: UserRow): User {
     return {
       id: row.id,
       email: row.email,
       name: row.name,
-      passwordHash: row.password,
+      hashedPassword: row.password,
     };
   }
 }

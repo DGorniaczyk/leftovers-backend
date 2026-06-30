@@ -14,8 +14,8 @@ import { User as AuthenticatedUser } from './interface/user.interface';
 import { User } from '../users/models/user.model';
 import { MailerService } from 'src/mailer/mailer.service';
 import { SignupRequestsRepository } from './signup-requests.repository';
-import { RegisterInput } from './dto/inputs/register.input';
-import { ConfirmRegisterInput } from './dto/inputs/confirm-register.input';
+import { RegisterInput } from './dto/inputs/register-input.dto';
+import { ConfirmRegisterInput } from './dto/inputs/confirm-register-input.dto';
 
 interface RegisterJwtPayload {
   sub: string;
@@ -40,8 +40,8 @@ export class AuthService {
       throw new ConflictException('User already exists');
     }
 
-    const passwordHash = await bcrypt.hash(password, bcrypt.genSaltSync());
-    return this.usersService.create({ email, passwordHash });
+    const hashedPassword = await bcrypt.hash(password, bcrypt.genSaltSync());
+    return this.usersService.create({ email, hashedPassword });
   }
 
   async register(input: RegisterInput): Promise<{ message: string }> {
@@ -61,13 +61,13 @@ export class AuthService {
       await this.signUpRequestRepository.deleteById(existingRequest.id);
     }
 
-    const passwordHash = await bcrypt.hash(input.password, bcrypt.genSaltSync());
+    const hashedPassword = await bcrypt.hash(input.password, bcrypt.genSaltSync());
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const request = await this.signUpRequestRepository.create({
       email: input.email,
       name: input.name,
-      passwordHash,
+      hashedPassword,
       expiresAt,
     });
 
@@ -79,7 +79,7 @@ export class AuthService {
       },
     );
 
-    const pageUrl = this.configService.get<string>('PAGE_URL') || 'http://localhost:3000';
+    const pageUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     const confirmLink = `${pageUrl}/confirm-register?token=${encodeURIComponent(token)}`;
 
     await this.mailerService.sendEmail(
@@ -128,7 +128,7 @@ export class AuthService {
 
     const user = await this.usersRepository.create({
       email: request.email,
-      passwordHash: request.passwordHash,
+      hashedPassword: request.hashedPassword,
       name: request.name,
     });
 
@@ -139,7 +139,7 @@ export class AuthService {
 
   async validateUser(email: string, password: string): Promise<User> {
     const user = await this.usersService.findByEmail(email);
-    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    if (!user || !(await bcrypt.compare(password, user.hashedPassword))) {
       throw new UnauthorizedException('Invalid credentials');
     }
     return user;
