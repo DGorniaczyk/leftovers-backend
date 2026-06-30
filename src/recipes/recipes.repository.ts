@@ -56,6 +56,11 @@ export class RecipesRepository {
     return conditions;
   }
 
+  async findById(id: string): Promise<Recipe | null> {
+    const row = await this.prisma.recipe.findUnique({ where: { id } });
+    return row ? this.toDomain(row) : null;
+  }
+
   private toDomain(
     row: NonNullable<Awaited<ReturnType<typeof this.prisma.recipe.findUnique>>>,
   ): Recipe {
