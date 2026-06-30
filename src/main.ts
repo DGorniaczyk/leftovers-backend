@@ -1,18 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, BadRequestException } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { configureApp } from './app.config';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      exceptionFactory: (errors) => new BadRequestException(errors),
-    }),
-  );
+  configureApp(app);
 
   const config = new DocumentBuilder()
     .setTitle('Leftovers API')

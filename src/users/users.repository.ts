@@ -15,11 +15,12 @@ export class UsersRepository {
     });
   }
 
-  async create(email: string, passwordhash: string) {
+  async create(email: string, passwordhash: string, name?: string | null) {
     return this.prisma.users.create({
       data: {
         email,
         password: passwordhash,
+        name,
       },
     });
   }

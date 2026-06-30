@@ -19,3 +19,13 @@ model users {
   email String @unique
   password String
 }
+
+model signup_requests{
+  id String @default(uuid()) @id
+  email String @unique
+  name String?
+  password_hash String
+  token String @unique
+  expires_at DateTime
+  created_at DateTime @default(now())
+}

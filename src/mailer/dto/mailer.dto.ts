@@ -4,12 +4,10 @@ import {
   IsString,
   IsEmail,
   IsArray,
-  ValidateNested,
   registerDecorator,
   ValidationOptions,
   ValidationArguments,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class AddressDto {
@@ -73,12 +71,13 @@ export class SendEmailDto {
 
   @ApiProperty({ description: 'HTML body' })
   @IsString()
-  html: string;
+  @IsOptional()
+  html?: string;
 
   @ApiPropertyOptional({ description: 'Plain text body' })
   @IsOptional()
   @IsString()
-  text: string;
+  text?: string;
 }
 
 export class GetTemplateDto {
@@ -90,4 +89,7 @@ export class GetTemplateDto {
   @IsOptional()
   @IsString()
   template?: string;
+
+  @IsOptional()
+  context?: Record<string, unknown>;
 }
