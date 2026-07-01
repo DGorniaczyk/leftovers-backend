@@ -12,7 +12,6 @@ describe('GET /recipes (e2e)', () => {
   let prisma: PrismaService;
   let jwtService: JwtService;
 
-  // Unique-ish IDs per test run so reruns / parallel runs don't collide.
   const runId = randomUUID().slice(0, 8);
 
   const userOneId = `e2e-user-1-${runId}`;
@@ -36,7 +35,6 @@ describe('GET /recipes (e2e)', () => {
     prisma = app.get(PrismaService);
     jwtService = app.get(JwtService);
 
-    // Seed two users (recipe.author_id is a required FK to users.id).
     await prisma.users.createMany({
       data: [
         { id: userOneId, email: `${userOneId}@example.com`, password: 'unused-hash' },
@@ -44,18 +42,18 @@ describe('GET /recipes (e2e)', () => {
       ],
     });
 
-    // Seed recipes: one public, one private owned by user-1, one private owned by user-2.
     const publicRecipe = await prisma.recipe.create({
       data: {
         title: `E2E Public Soup ${runId}`,
         description: 'Visible to everyone',
-        prep_time: 20,
+        prep_time_minutes: 20,
+        servings: 4,
         is_public: true,
         author_id: userOneId,
         rating: 4,
-        category: 'soup',
-        ingredients: 'tomato, salt',
-        steps: 'boil, serve',
+        category: 'SOUP',
+        ingredients: ['tomato', 'salt'],
+        steps: ['boil tomatoes', 'serve hot'],
       },
     });
     publicRecipeId = publicRecipe.id;
@@ -64,13 +62,14 @@ describe('GET /recipes (e2e)', () => {
       data: {
         title: `E2E Private Stew ${runId}`,
         description: 'Only user-1 should see this',
-        prep_time: 45,
+        prep_time_minutes: 45,
+        servings: 2,
         is_public: false,
         author_id: userOneId,
         rating: 5,
-        category: 'stew',
-        ingredients: 'beef, carrot',
-        steps: 'simmer for hours',
+        category: 'DINNER',
+        ingredients: ['beef', 'carrot'],
+        steps: ['simmer for hours'],
       },
     });
     ownPrivateRecipeId = ownPrivateRecipe.id;
@@ -79,19 +78,18 @@ describe('GET /recipes (e2e)', () => {
       data: {
         title: `E2E Private Snack ${runId}`,
         description: 'Should never be visible to user-1',
-        prep_time: 10,
+        prep_time_minutes: 10,
+        servings: 1,
         is_public: false,
         author_id: userTwoId,
         rating: 3,
-        category: 'snack',
-        ingredients: 'chips',
-        steps: 'open bag',
+        category: 'SNACK',
+        ingredients: ['chips'],
+        steps: ['open bag'],
       },
     });
     otherPrivateRecipeId = otherPrivateRecipe.id;
 
-    // Sign a real access token the same way AuthService.login() does, so the
-    // JwtStrategy / OptionalJwtAuthGuard validate it through the real flow.
     accessTokenUserOne = await jwtService.signAsync({
       email: `${userOneId}@example.com`,
       sub: userOneId,
@@ -143,7 +141,7 @@ describe('GET /recipes (e2e)', () => {
   it('returns only summary fields when details is not set', async () => {
     const response = await request(app.getHttpServer())
       .get('/recipes')
-      .query({ category: 'soup' })
+      .query({ category: 'SOUP' })
       .expect(200);
 
     const recipe = response.body.find((r: { id: string }) => r.id === publicRecipeId);
@@ -154,14 +152,14 @@ describe('GET /recipes (e2e)', () => {
   it('returns full recipe details when details=true', async () => {
     const response = await request(app.getHttpServer())
       .get('/recipes')
-      .query({ category: 'soup', details: 'true' })
+      .query({ category: 'SOUP', details: 'true' })
       .expect(200);
 
     const recipe = response.body.find((r: { id: string }) => r.id === publicRecipeId);
     expect(recipe).toMatchObject({
       id: publicRecipeId,
-      ingredients: 'tomato, salt',
-      steps: 'boil, serve',
+      ingredients: ['tomato', 'salt'],
+      steps: ['boil tomatoes', 'serve hot'],
       isPublic: true,
       authorId: userOneId,
     });
@@ -170,7 +168,7 @@ describe('GET /recipes (e2e)', () => {
   it('filters by category', async () => {
     const response = await request(app.getHttpServer())
       .get('/recipes')
-      .query({ category: 'stew' })
+      .query({ category: 'DINNER' })
       .set('Authorization', `Bearer ${accessTokenUserOne}`)
       .expect(200);
 
@@ -198,7 +196,7 @@ describe('GET /recipes (e2e)', () => {
   it('returns 200 with an empty array when filters match nothing', async () => {
     const response = await request(app.getHttpServer())
       .get('/recipes')
-      .query({ category: `nonexistent-category-${runId}` })
+      .query({ category: 'BEVERAGE', title: `nonexistent-${runId}` })
       .expect(200);
 
     expect(response.body).toEqual([]);
