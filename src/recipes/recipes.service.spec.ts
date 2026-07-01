@@ -17,7 +17,7 @@ describe('RecipesService', () => {
     isPublic: true,
     authorId: 'author-1',
     createdAt: new Date('2024-01-01T00:00:00Z'),
-    updateAt: new Date('2024-01-01T00:00:00Z'),
+    updatedAt: new Date('2024-01-01T00:00:00Z'),
     rating: 4,
     category: 'soup',
     ingredients: 'tomato, salt, water',
