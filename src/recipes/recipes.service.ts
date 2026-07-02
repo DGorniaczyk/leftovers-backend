@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { RecipesRepository } from './recipes.repository';
 import { Recipe } from './models/recipe.model';
 import { RecipeQuerySearchDto } from './dto/recipe-query-search.dto';
+import { CreateRecipeInput } from './dto/inputs/create-recipe-input.dto';
 
 @Injectable()
 export class RecipesService {
@@ -21,5 +22,9 @@ export class RecipesService {
     }
 
     return recipe;
+  }
+
+  async create(input: CreateRecipeInput): Promise<Recipe> {
+    return this.recipesRepository.create(input);
   }
 }

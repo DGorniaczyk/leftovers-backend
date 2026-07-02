@@ -15,9 +15,7 @@ interface NormalizedRecipient {
 export class MailerService {
   constructor(private readonly configService: ConfigService) {}
 
-  private normalizeRecipient(
-    recipient: string | AddressDto,
-  ): NormalizedRecipient {
+  private normalizeRecipient(recipient: string | AddressDto): NormalizedRecipient {
     if (typeof recipient === 'string') {
       return { address: recipient };
     }
@@ -70,11 +68,7 @@ export class MailerService {
 
     if (templateDto.template) {
       const srcRoot = path.resolve(process.cwd(), 'src');
-      const templatePath = path.join(
-        srcRoot,
-        'mailer/templates',
-        `${templateDto.template}.hbs`,
-      );
+      const templatePath = path.join(srcRoot, 'mailer/templates', `${templateDto.template}.hbs`);
       try {
         const templateSource = await fs.readFile(templatePath, 'utf8');
         const tpl = Handlebars.compile(templateSource);
@@ -88,9 +82,7 @@ export class MailerService {
     const mailOptions: nodemailer.SendMailOptions = {
       from,
       to: normalizedRecipients.map((recipient) =>
-        recipient.name
-          ? { name: recipient.name, address: recipient.address }
-          : recipient.address,
+        recipient.name ? { name: recipient.name, address: recipient.address } : recipient.address,
       ),
       subject: dto.subject,
       html,
@@ -99,7 +91,6 @@ export class MailerService {
 
     const info = await transporter.sendMail(mailOptions);
     const previewUrl = nodemailer.getTestMessageUrl(info);
-    console.log('Preview URL: %s', previewUrl);
     return { success: true, info, status: 'success' };
   }
 }

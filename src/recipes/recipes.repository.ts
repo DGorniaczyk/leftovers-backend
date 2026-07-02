@@ -1,8 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '../generated/prisma/client';
-import { Recipe } from './models/recipe.model';
+import {
+  Prisma,
+  recipe as RecipeRow,
+  recipe_category as RecipeCategoryPrisma,
+} from '../generated/prisma/client';
+import { Recipe, RecipeCategory } from './models/recipe.model';
 import { RecipeQuerySearchDto } from './dto/recipe-query-search.dto';
+import { CreateRecipeInput } from './dto/inputs/create-recipe-input.dto';
 
 @Injectable()
 export class RecipesRepository {
@@ -29,7 +34,7 @@ export class RecipesRepository {
     const conditions: Prisma.recipeWhereInput[] = [];
 
     if (filters.category) {
-      conditions.push({ category: filters.category });
+      conditions.push({ category: filters.category as RecipeCategoryPrisma });
     }
     if (filters.rating !== undefined) {
       conditions.push({ rating: { gte: filters.rating } });
@@ -41,10 +46,10 @@ export class RecipesRepository {
       conditions.push({ description: { contains: filters.description, mode: 'insensitive' } });
     }
     if (filters.ingredients) {
-      conditions.push({ ingredients: { contains: filters.ingredients, mode: 'insensitive' } });
+      conditions.push({ ingredients: { has: filters.ingredients } });
     }
     if (filters.steps) {
-      conditions.push({ steps: { contains: filters.steps, mode: 'insensitive' } });
+      conditions.push({ steps: { has: filters.steps } });
     }
     if (filters.startDate) {
       conditions.push({ created_at: { gte: filters.startDate } });
@@ -61,20 +66,37 @@ export class RecipesRepository {
     return row ? this.toDomain(row) : null;
   }
 
-  private toDomain(
-    row: NonNullable<Awaited<ReturnType<typeof this.prisma.recipe.findUnique>>>,
-  ): Recipe {
+  async create(input: CreateRecipeInput): Promise<Recipe> {
+    const row = await this.prisma.recipe.create({
+      data: {
+        title: input.title,
+        description: input.description,
+        category: input.category as RecipeCategoryPrisma,
+        prep_time_minutes: input.prepTime,
+        servings: input.servings,
+        ingredients: input.ingredients,
+        steps: input.steps,
+        author_id: input.authorId,
+        rating: 0,
+        is_public: true,
+      },
+    });
+    return this.toDomain(row);
+  }
+
+  private toDomain(row: RecipeRow): Recipe {
     return {
       id: row.id,
       title: row.title,
       description: row.description,
-      prepTime: row.prep_time,
+      prepTime: row.prep_time_minutes,
+      servings: row.servings,
       isPublic: row.is_public,
       authorId: row.author_id,
       createdAt: row.created_at,
-      editedAt: row.edited_at,
+      updatedAt: row.updated_at,
       rating: row.rating,
-      category: row.category,
+      category: row.category as unknown as RecipeCategory,
       ingredients: row.ingredients,
       steps: row.steps,
     };

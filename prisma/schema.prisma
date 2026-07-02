@@ -24,17 +24,31 @@ model users {
 model recipe {
   id String @default(uuid()) @id
   title String
-  description String?
-  prep_time Int?
+  description String
+  prep_time_minutes Int
   is_public Boolean @default(true)
   author_id String
   author users @relation(fields: [author_id], references: [id])
+  servings Int
   created_at DateTime @default(now())
-  edited_at DateTime @updatedAt
+  updated_at DateTime @updatedAt
   rating Int
-  category String?
-  ingredients String
-  steps String
+  category recipe_category
+  ingredients String[]
+  steps String[]
+}
+
+enum recipe_category {
+  BREAKFAST
+  LUNCH
+  DINNER
+  DESSERT
+  SNACK
+  APPETIZER
+  SOUP
+  SALAD
+  BEVERAGE
+  OTHER
 }
 
 model signup_requests{

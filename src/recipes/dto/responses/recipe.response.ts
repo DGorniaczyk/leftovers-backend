@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Recipe } from '../../models/recipe.model';
+import { Recipe, RecipeCategory } from '../../models/recipe.model';
 
 export class RecipeResponse {
   @ApiProperty()
@@ -8,11 +8,14 @@ export class RecipeResponse {
   @ApiProperty()
   title: string;
 
-  @ApiPropertyOptional()
-  description: string | null;
+  @ApiProperty()
+  description: string;
 
-  @ApiPropertyOptional()
-  prepTime: number | null;
+  @ApiProperty()
+  prepTime: number;
+
+  @ApiProperty()
+  servings: number;
 
   @ApiProperty()
   isPublic: boolean;
@@ -24,19 +27,19 @@ export class RecipeResponse {
   createdAt: Date;
 
   @ApiProperty()
-  editedAt: Date;
+  updatedAt: Date;
 
   @ApiProperty()
   rating: number;
 
-  @ApiPropertyOptional()
-  category: string | null;
+  @ApiProperty({ enum: RecipeCategory })
+  category: RecipeCategory;
 
-  @ApiProperty()
-  ingredients: string;
+  @ApiProperty({ type: [String] })
+  ingredients: string[];
 
-  @ApiProperty()
-  steps: string;
+  @ApiProperty({ type: [String] })
+  steps: string[];
 
   static from(recipe: Recipe): RecipeResponse {
     return { ...recipe };

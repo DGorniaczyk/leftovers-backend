@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { RecipesService } from './recipes.service';
 import { RecipesRepository } from './recipes.repository';
-import { Recipe } from './recipe.model';
+import { Recipe } from './models/recipe.model';
 import { RecipeQuerySearchDto } from './dto/recipe-query-search.dto';
 
 describe('RecipesService', () => {
@@ -17,7 +17,7 @@ describe('RecipesService', () => {
     isPublic: true,
     authorId: 'author-1',
     createdAt: new Date('2024-01-01T00:00:00Z'),
-    editedAt: new Date('2024-01-01T00:00:00Z'),
+    updatedAt: new Date('2024-01-01T00:00:00Z'),
     rating: 4,
     category: 'soup',
     ingredients: 'tomato, salt, water',
