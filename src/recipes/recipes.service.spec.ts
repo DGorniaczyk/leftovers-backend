@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
 import { RecipesService } from './recipes.service';
 import { RecipesRepository } from './recipes.repository';
 import { Recipe } from './recipe.model';
@@ -27,6 +28,7 @@ describe('RecipesService', () => {
   beforeEach(async () => {
     const repositoryMock: Partial<jest.Mocked<RecipesRepository>> = {
       findVisible: jest.fn(),
+      findById: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -45,39 +47,104 @@ describe('RecipesService', () => {
     expect(service).toBeDefined();
   });
 
-  it('delegates to repository.findVisible with the given filters and userId', async () => {
-    const filters: RecipeQuerySearchDto = { category: 'soup' } as RecipeQuerySearchDto;
-    const recipes = [buildRecipe()];
-    repository.findVisible.mockResolvedValue(recipes);
+  describe('findVisible', () => {
+    it('delegates to repository.findVisible with the given filters and userId', async () => {
+      const filters: RecipeQuerySearchDto = { category: 'soup' } as RecipeQuerySearchDto;
+      const recipes = [buildRecipe()];
+      repository.findVisible.mockResolvedValue(recipes);
 
-    const result = await service.findVisible(filters, 'user-1');
+      const result = await service.findVisible(filters, 'user-1');
 
-    expect(repository.findVisible).toHaveBeenCalledWith(filters, 'user-1');
-    expect(repository.findVisible).toHaveBeenCalledTimes(1);
-    expect(result).toBe(recipes);
+      expect(repository.findVisible).toHaveBeenCalledWith(filters, 'user-1');
+      expect(repository.findVisible).toHaveBeenCalledTimes(1);
+      expect(result).toBe(recipes);
+    });
+
+    it('passes userId = null through for guests', async () => {
+      repository.findVisible.mockResolvedValue([]);
+
+      await service.findVisible({} as RecipeQuerySearchDto, null);
+
+      expect(repository.findVisible).toHaveBeenCalledWith({}, null);
+    });
+
+    it('returns an empty array when the repository finds nothing', async () => {
+      repository.findVisible.mockResolvedValue([]);
+
+      const result = await service.findVisible({} as RecipeQuerySearchDto, 'user-1');
+
+      expect(result).toEqual([]);
+    });
+
+    it('propagates errors thrown by the repository', async () => {
+      repository.findVisible.mockRejectedValue(new Error('db unavailable'));
+
+      await expect(service.findVisible({} as RecipeQuerySearchDto, 'user-1')).rejects.toThrow(
+        'db unavailable',
+      );
+    });
   });
 
-  it('passes userId = null through for guests', async () => {
-    repository.findVisible.mockResolvedValue([]);
+  describe('findOne', () => {
+    it('returns a public recipe for a guest (userId = null)', async () => {
+      const recipe = buildRecipe({ isPublic: true, authorId: 'author-1' });
+      repository.findById.mockResolvedValue(recipe);
 
-    await service.findVisible({} as RecipeQuerySearchDto, null);
+      const result = await service.findOne('recipe-1', null);
 
-    expect(repository.findVisible).toHaveBeenCalledWith({}, null);
-  });
+      expect(repository.findById).toHaveBeenCalledWith('recipe-1');
+      expect(result).toBe(recipe);
+    });
 
-  it('returns an empty array when the repository finds nothing', async () => {
-    repository.findVisible.mockResolvedValue([]);
+    it('returns a public recipe for an authenticated user who is not the owner', async () => {
+      const recipe = buildRecipe({ isPublic: true, authorId: 'author-1' });
+      repository.findById.mockResolvedValue(recipe);
 
-    const result = await service.findVisible({} as RecipeQuerySearchDto, 'user-1');
+      const result = await service.findOne('recipe-1', 'someone-else');
 
-    expect(result).toEqual([]);
-  });
+      expect(result).toBe(recipe);
+    });
 
-  it('propagates errors thrown by the repository', async () => {
-    repository.findVisible.mockRejectedValue(new Error('db unavailable'));
+    it('returns a private recipe when the requester is the owner', async () => {
+      const recipe = buildRecipe({ isPublic: false, authorId: 'owner-1' });
+      repository.findById.mockResolvedValue(recipe);
 
-    await expect(service.findVisible({} as RecipeQuerySearchDto, 'user-1')).rejects.toThrow(
-      'db unavailable',
-    );
+      const result = await service.findOne('recipe-1', 'owner-1');
+
+      expect(result).toBe(recipe);
+    });
+
+    it('throws NotFoundException when the recipe does not exist', async () => {
+      repository.findById.mockResolvedValue(null);
+
+      await expect(service.findOne('missing-id', 'user-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException for a guest requesting a private recipe', async () => {
+      const recipe = buildRecipe({ isPublic: false, authorId: 'owner-1' });
+      repository.findById.mockResolvedValue(recipe);
+
+      await expect(service.findOne('recipe-1', null)).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException for an authenticated user who is not the owner of a private recipe', async () => {
+      const recipe = buildRecipe({ isPublic: false, authorId: 'owner-1' });
+      repository.findById.mockResolvedValue(recipe);
+
+      await expect(service.findOne('recipe-1', 'someone-else')).rejects.toThrow(NotFoundException);
+    });
+
+    it('never reveals whether the recipe exists in the error (404 in both cases)', async () => {
+      repository.findById.mockResolvedValueOnce(null);
+      const notFoundError = await service.findOne('missing-id', 'user-1').catch((e) => e);
+
+      const recipe = buildRecipe({ isPublic: false, authorId: 'owner-1' });
+      repository.findById.mockResolvedValueOnce(recipe);
+      const notAccessibleError = await service.findOne('recipe-1', 'someone-else').catch((e) => e);
+
+      expect(notFoundError).toBeInstanceOf(NotFoundException);
+      expect(notAccessibleError).toBeInstanceOf(NotFoundException);
+      expect(notFoundError.getStatus()).toBe(notAccessibleError.getStatus());
+    });
   });
 });

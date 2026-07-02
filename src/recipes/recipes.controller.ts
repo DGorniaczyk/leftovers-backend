@@ -1,5 +1,11 @@
-import { Controller, Get, Query, Request, UseGuards } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Query, Request, UseGuards, Param } from '@nestjs/common';
+import {
+  ApiOkResponse,
+  ApiOperation,
+  ApiQuery,
+  ApiBearerAuth,
+  ApiNotFoundResponse,
+} from '@nestjs/swagger';
 import { RecipesService } from './recipes.service';
 import { RecipeQuerySearchDto } from './dto/recipe-query-search.dto';
 import { RecipeSummaryResponse } from './dto/responses/recipe-summary.response';
@@ -45,5 +51,22 @@ export class RecipesController {
     return query.details
       ? recipes.map((recipe) => RecipeResponse.from(recipe))
       : recipes.map((recipe) => RecipeSummaryResponse.from(recipe));
+  }
+
+  @ApiOperation({ summary: 'Get a single recipe by id' })
+  @ApiBearerAuth()
+  @ApiOkResponse({ type: RecipeResponse })
+  @ApiNotFoundResponse({ description: 'Recipe not found or not accessible' })
+  @UseGuards(OptionalJwtAuthGuard)
+  @Get(':id')
+  async findOne(
+    @Param('id') id: string,
+    @Request() req: { user: AuthenticatedUser | null },
+  ): Promise<RecipeResponse> {
+    const userId = req.user?.userId ?? null;
+
+    const recipe = await this.recipesService.findOne(id, userId);
+
+    return RecipeResponse.from(recipe);
   }
 }
