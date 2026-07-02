@@ -24,6 +24,7 @@ import {
   ApiConsumes,
   ApiBody,
   ApiResponse,
+  ApiExtraModels,
 } from '@nestjs/swagger';
 import { RecipesService } from './recipes.service';
 import { RecipeQuerySearchDto } from './dto/recipe-query-search.dto';
@@ -51,13 +52,17 @@ export class RecipesController {
     type: Boolean,
     description: 'If true, return full recipe details; otherwise return summary fields only.',
   })
+  @ApiExtraModels(RecipeSummaryResponse, RecipeResponse)
   @ApiOkResponse({
     description: 'List of recipes (empty array if none found)',
+    isArray: true,
     schema: {
-      oneOf: [
-        { type: 'array', items: { $ref: '#/components/schemas/RecipeSummaryResponse' } },
-        { type: 'array', items: { $ref: '#/components/schemas/RecipeResponse' } },
-      ],
+      items: {
+        oneOf: [
+          { $ref: '#/components/schemas/RecipeSummaryResponse' },
+          { $ref: '#/components/schemas/RecipeResponse' },
+        ],
+      },
     },
   })
   @UseGuards(OptionalJwtAuthGuard)
