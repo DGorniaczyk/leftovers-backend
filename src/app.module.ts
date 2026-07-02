@@ -9,6 +9,7 @@ import { MailerModule } from './mailer/mailer.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RecipesService } from './recipes/recipes.service';
 import { RecipesModule } from './recipes/recipes.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { RecipesModule } from './recipes/recipes.module';
     MailerModule,
     PrismaModule,
     RecipesModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [AppService, MailerService],

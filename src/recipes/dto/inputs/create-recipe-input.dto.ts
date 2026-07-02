@@ -9,4 +9,5 @@ export class CreateRecipeInput {
   ingredients: string[];
   steps: string[];
   authorId: string;
+  coverImageKey: string;
 }

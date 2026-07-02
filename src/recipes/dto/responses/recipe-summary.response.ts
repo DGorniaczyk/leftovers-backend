@@ -14,12 +14,16 @@ export class RecipeSummaryResponse {
   @ApiPropertyOptional()
   prepTime: number | null;
 
+  @ApiProperty({ description: 'Presigned URL to access the cover image (valid 1h)' })
+  coverImageUrl: string;
+
   static from(recipe: Recipe): RecipeSummaryResponse {
     return {
       id: recipe.id,
       title: recipe.title,
       description: recipe.description,
       prepTime: recipe.prepTime,
+      coverImageUrl: recipe.coverImageUrl,
     };
   }
 }

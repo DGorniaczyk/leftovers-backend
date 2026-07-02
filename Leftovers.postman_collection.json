@@ -81,13 +81,69 @@
         "method": "POST",
         "header": [],
         "body": {
-          "mode": "raw",
-          "raw": "{\n  \"title\": \"\",\n  \"description\": \"\",\n  \"category\": \"\",\n  \"prepTime\": 0,\n  \"servings\": 0,\n  \"ingredients\": [\n  ],\n  \"steps\": [\n  ]\n}",
-          "options": {
-            "raw": {
-              "language": "json"
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "title",
+              "value": "",
+              "type": "text"
+            },
+            {
+              "key": "description",
+              "value": "",
+              "type": "text"
+            },
+            {
+              "key": "category",
+              "value": "",
+              "type": "text"
+            },
+            {
+              "key": "prepTime",
+              "value": "",
+              "type": "text"
+            },
+            {
+              "key": "servings",
+              "value": "",
+              "type": "text"
+            },
+            {
+              "key": "ingredients",
+              "value": "",
+              "type": "text"
+            },
+            {
+              "key": "ingredients",
+              "value": "",
+              "type": "text"
+            },
+            {
+              "key": "ingredients",
+              "value": "",
+              "type": "text"
+            },
+            {
+              "key": "steps",
+              "value": "",
+              "type": "text"
+            },
+            {
+              "key": "steps",
+              "value": "",
+              "type": "text"
+            },
+            {
+              "key": "steps",
+              "value": "",
+              "type": "text"
+            },
+            {
+              "key": "coverImage",
+              "type": "file",
+              "value": null
             }
-          }
+          ]
         },
         "url": {
           "raw": "http://localhost:3000/recipes",
