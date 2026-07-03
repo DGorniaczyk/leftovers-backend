@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { RecipesService } from './recipes.service';
 import { RecipesRepository } from './recipes.repository';
+import { UploadService } from '../upload/upload.service';
 import { Recipe, RecipeCategory } from './models/recipe.model';
 import { RecipeQuerySearchDto } from './dto/recipe-query-search.dto';
 import { CreateRecipeInput } from './dto/inputs/create-recipe-input.dto';
@@ -9,6 +10,9 @@ import { CreateRecipeInput } from './dto/inputs/create-recipe-input.dto';
 describe('RecipesService', () => {
   let service: RecipesService;
   let repository: jest.Mocked<RecipesRepository>;
+  let uploadService: jest.Mocked<UploadService>;
+
+  const FAKE_PRESIGNED_URL = 'https://s3.example.com/recipes/fake-key.jpg?signature=xxx';
 
   const buildRecipe = (overrides: Partial<Recipe> = {}): Recipe => ({
     id: 'recipe-1',
@@ -24,12 +28,14 @@ describe('RecipesService', () => {
     category: RecipeCategory.SOUP,
     ingredients: ['2 tomatoes', '1 tsp salt'],
     steps: ['Boil tomatoes', 'Blend until smooth'],
+    coverImageKey: 'recipes/fake-key.jpg',
+    coverImageUrl: '',
     ...overrides,
   });
 
   const buildCreateRecipeInput = (
-    overrides: Partial<CreateRecipeInput> = {},
-  ): CreateRecipeInput => ({
+    overrides: Partial<Omit<CreateRecipeInput, 'coverImageKey'>> = {},
+  ): Omit<CreateRecipeInput, 'coverImageKey'> => ({
     title: 'Tomato Soup',
     description: 'A warm classic',
     category: RecipeCategory.SOUP,
@@ -41,6 +47,19 @@ describe('RecipesService', () => {
     ...overrides,
   });
 
+  const buildMockFile = (): Express.Multer.File => ({
+    fieldname: 'coverImage',
+    originalname: 'soup.jpg',
+    encoding: '7bit',
+    mimetype: 'image/jpeg',
+    buffer: Buffer.from('fake-image-content'),
+    size: 1024,
+    stream: null,
+    destination: '',
+    filename: '',
+    path: '',
+  });
+
   beforeEach(async () => {
     const repositoryMock: Partial<jest.Mocked<RecipesRepository>> = {
       findVisible: jest.fn(),
@@ -48,12 +67,22 @@ describe('RecipesService', () => {
       create: jest.fn(),
     };
 
+    const uploadServiceMock: Partial<jest.Mocked<UploadService>> = {
+      upload: jest.fn().mockResolvedValue(undefined),
+      getFileUrl: jest.fn().mockResolvedValue(FAKE_PRESIGNED_URL),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [RecipesService, { provide: RecipesRepository, useValue: repositoryMock }],
+      providers: [
+        RecipesService,
+        { provide: RecipesRepository, useValue: repositoryMock },
+        { provide: UploadService, useValue: uploadServiceMock },
+      ],
     }).compile();
 
     service = module.get(RecipesService);
     repository = module.get(RecipesRepository);
+    uploadService = module.get(UploadService);
   });
 
   afterEach(() => {
@@ -76,7 +105,18 @@ describe('RecipesService', () => {
 
       expect(repository.findVisible).toHaveBeenCalledWith(filters, 'user-1');
       expect(repository.findVisible).toHaveBeenCalledTimes(1);
-      expect(result).toBe(recipes);
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe(recipes[0].id);
+    });
+
+    it('enriches each recipe with a presigned URL', async () => {
+      const recipes = [buildRecipe({ coverImageKey: 'recipes/fake-key.jpg' })];
+      repository.findVisible.mockResolvedValue(recipes);
+
+      const result = await service.findVisible({} as RecipeQuerySearchDto, null);
+
+      expect(uploadService.getFileUrl).toHaveBeenCalledWith('recipes/fake-key.jpg');
+      expect(result[0].coverImageUrl).toBe(FAKE_PRESIGNED_URL);
     });
 
     it('passes userId = null through for guests', async () => {
@@ -105,14 +145,15 @@ describe('RecipesService', () => {
   });
 
   describe('findOne', () => {
-    it('returns a public recipe for a guest (userId = null)', async () => {
+    it('returns a public recipe with a presigned URL for a guest (userId = null)', async () => {
       const recipe = buildRecipe({ isPublic: true, authorId: 'author-1' });
       repository.findById.mockResolvedValue(recipe);
 
       const result = await service.findOne('recipe-1', null);
 
       expect(repository.findById).toHaveBeenCalledWith('recipe-1');
-      expect(result).toBe(recipe);
+      expect(result.id).toBe(recipe.id);
+      expect(result.coverImageUrl).toBe(FAKE_PRESIGNED_URL);
     });
 
     it('returns a public recipe for an authenticated user who is not the owner', async () => {
@@ -121,7 +162,7 @@ describe('RecipesService', () => {
 
       const result = await service.findOne('recipe-1', 'someone-else');
 
-      expect(result).toBe(recipe);
+      expect(result.id).toBe(recipe.id);
     });
 
     it('returns a private recipe when the requester is the owner', async () => {
@@ -130,7 +171,7 @@ describe('RecipesService', () => {
 
       const result = await service.findOne('recipe-1', 'owner-1');
 
-      expect(result).toBe(recipe);
+      expect(result.id).toBe(recipe.id);
     });
 
     it('throws NotFoundException when the recipe does not exist', async () => {
@@ -168,23 +209,50 @@ describe('RecipesService', () => {
   });
 
   describe('create', () => {
-    it('delegates to repository.create with the given input', async () => {
+    it('uploads the cover image to S3 before saving the recipe', async () => {
       const input = buildCreateRecipeInput();
-      const recipe = buildRecipe();
-      repository.create.mockResolvedValue(recipe);
+      const coverImage = buildMockFile();
+      repository.create.mockResolvedValue(buildRecipe());
 
-      const result = await service.create(input);
+      await service.create(input, coverImage);
 
-      expect(repository.create).toHaveBeenCalledWith(input);
-      expect(repository.create).toHaveBeenCalledTimes(1);
-      expect(result).toBe(recipe);
+      expect(uploadService.upload).toHaveBeenCalledTimes(1);
+      const [key, file] = (uploadService.upload as jest.Mock).mock.calls[0];
+      expect(key).toMatch(/^recipes\/.+\.jpg$/);
+      expect(file).toBe(coverImage);
+    });
+
+    it('saves the recipe with the generated S3 key', async () => {
+      const input = buildCreateRecipeInput();
+      const coverImage = buildMockFile();
+      repository.create.mockResolvedValue(buildRecipe());
+
+      await service.create(input, coverImage);
+
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          coverImageKey: expect.stringMatching(/^recipes\/.+\.jpg$/),
+        }),
+      );
+    });
+
+    it('returns the created recipe with a presigned URL', async () => {
+      const input = buildCreateRecipeInput();
+      const coverImage = buildMockFile();
+      const created = buildRecipe({ id: 'new-recipe-id' });
+      repository.create.mockResolvedValue(created);
+
+      const result = await service.create(input, coverImage);
+
+      expect(result.id).toBe('new-recipe-id');
+      expect(result.coverImageUrl).toBe(FAKE_PRESIGNED_URL);
     });
 
     it('passes authorId through to the repository', async () => {
       const input = buildCreateRecipeInput({ authorId: 'specific-user-id' });
       repository.create.mockResolvedValue(buildRecipe({ authorId: 'specific-user-id' }));
 
-      await service.create(input);
+      await service.create(input, buildMockFile());
 
       expect(repository.create).toHaveBeenCalledWith(
         expect.objectContaining({ authorId: 'specific-user-id' }),
@@ -203,7 +271,7 @@ describe('RecipesService', () => {
       });
       repository.create.mockResolvedValue(buildRecipe());
 
-      await service.create(input);
+      await service.create(input, buildMockFile());
 
       expect(repository.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -218,21 +286,21 @@ describe('RecipesService', () => {
       );
     });
 
-    it('returns the created recipe from the repository', async () => {
-      const input = buildCreateRecipeInput();
-      const created = buildRecipe({ id: 'new-recipe-id', title: input.title });
-      repository.create.mockResolvedValue(created);
-
-      const result = await service.create(input);
-
-      expect(result).toBe(created);
-      expect(result.id).toBe('new-recipe-id');
-    });
-
     it('propagates errors thrown by the repository', async () => {
       repository.create.mockRejectedValue(new Error('db unavailable'));
 
-      await expect(service.create(buildCreateRecipeInput())).rejects.toThrow('db unavailable');
+      await expect(service.create(buildCreateRecipeInput(), buildMockFile())).rejects.toThrow(
+        'db unavailable',
+      );
+    });
+
+    it('propagates errors thrown by the upload service', async () => {
+      uploadService.upload.mockRejectedValue(new Error('S3 unavailable'));
+
+      await expect(service.create(buildCreateRecipeInput(), buildMockFile())).rejects.toThrow(
+        'S3 unavailable',
+      );
+      expect(repository.create).not.toHaveBeenCalled();
     });
   });
 });
