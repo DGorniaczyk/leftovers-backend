@@ -2,13 +2,13 @@ export class SignupRequest {
   id: string;
   email: string;
   name: string | null;
-  passwordHash: string;
+  hashedPassword: string;
   expiresAt: Date;
 }
 
 export class CreateSignupRequest {
   email: string;
   name: string;
-  passwordHash: string;
+  hashedPassword: string;
   expiresAt: Date;
 }

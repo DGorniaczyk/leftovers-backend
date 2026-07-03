@@ -7,9 +7,8 @@ export class ConfirmRegisterDto {
   })
   @IsEmail()
   email: string;
-
   @ApiProperty({
-    example: 'kmsdfp12ld256123sx',
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
   })
   @IsString()
   token: string;

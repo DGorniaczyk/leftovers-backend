@@ -12,8 +12,8 @@ import { ConfirmRegisterDto } from './dto/confirm-register.dto';
 import { SignUpDto } from './dto/SignUp.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { LoginResponse } from './dto/responses/login.dto';
-import { RegisterInput } from './dto/inputs/register.input';
-import { ConfirmRegisterInput } from './dto/inputs/confirm-register.input';
+import { RegisterInput } from './dto/inputs/register-input.dto';
+import { ConfirmRegisterInput } from './dto/inputs/confirm-register-input.dto';
 import { RegisterConfirmationSentResponse } from './dto/responses/register-confirmation-sent.response';
 import { ConfirmRegisterResponse } from './dto/responses/confirm-register.response';
 
@@ -40,7 +40,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard('local'))
   @Post('login')
-  async login(@Request() req): Promise<LoginResponse> {
+  login(@Request() req): Promise<LoginResponse> {
     return this.authService.login(req.user);
   }
 
@@ -98,7 +98,6 @@ export class AuthController {
   @Post('confirm-register')
   async confirmRegistration(@Body() dto: ConfirmRegisterDto): Promise<ConfirmRegisterResponse> {
     const input: ConfirmRegisterInput = {
-      email: dto.email,
       token: dto.token,
     };
 
