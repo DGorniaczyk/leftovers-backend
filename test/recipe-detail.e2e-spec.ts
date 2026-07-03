@@ -46,13 +46,14 @@ describe('GET /recipes/:id (e2e)', () => {
       data: {
         title: `E2E Detail Public ${runId}`,
         description: 'Visible to everyone',
-        prep_time: 15,
+        prep_time_minutes: 15,
+        servings: 2,
         is_public: true,
         author_id: ownerId,
         rating: 4,
-        category: 'snack',
-        ingredients: 'bread, butter',
-        steps: 'spread, eat',
+        category: 'SNACK',
+        ingredients: ['bread', 'butter'],
+        steps: ['spread butter on bread', 'eat'],
       },
     });
     publicRecipeId = publicRecipe.id;
@@ -61,13 +62,14 @@ describe('GET /recipes/:id (e2e)', () => {
       data: {
         title: `E2E Detail Private ${runId}`,
         description: 'Only the owner should see this',
-        prep_time: 60,
+        prep_time_minutes: 60,
+        servings: 4,
         is_public: false,
         author_id: ownerId,
         rating: 5,
-        category: 'dessert',
-        ingredients: 'sugar, flour, eggs',
-        steps: 'mix, bake, cool',
+        category: 'DESSERT',
+        ingredients: ['sugar', 'flour', 'eggs'],
+        steps: ['mix ingredients', 'bake for 30 minutes', 'cool and serve'],
       },
     });
     ownerPrivateRecipeId = privateRecipe.id;
@@ -100,8 +102,8 @@ describe('GET /recipes/:id (e2e)', () => {
     expect(response.body).toMatchObject({
       id: publicRecipeId,
       isPublic: true,
-      ingredients: 'bread, butter',
-      steps: 'spread, eat',
+      ingredients: ['bread', 'butter'],
+      steps: ['spread butter on bread', 'eat'],
     });
   });
 

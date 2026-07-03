@@ -2,8 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { RecipesService } from './recipes.service';
 import { RecipesRepository } from './recipes.repository';
-import { Recipe } from './models/recipe.model';
+import { Recipe, RecipeCategory } from './models/recipe.model';
 import { RecipeQuerySearchDto } from './dto/recipe-query-search.dto';
+import { CreateRecipeInput } from './dto/inputs/create-recipe-input.dto';
 
 describe('RecipesService', () => {
   let service: RecipesService;
@@ -14,14 +15,29 @@ describe('RecipesService', () => {
     title: 'Tomato Soup',
     description: 'A warm classic',
     prepTime: 30,
+    servings: 4,
     isPublic: true,
     authorId: 'author-1',
     createdAt: new Date('2024-01-01T00:00:00Z'),
-    updatedAt: new Date('2024-01-01T00:00:00Z'),
-    rating: 4,
-    category: 'soup',
-    ingredients: 'tomato, salt, water',
-    steps: 'boil, blend, serve',
+    editedAt: new Date('2024-01-01T00:00:00Z'),
+    rating: 0,
+    category: RecipeCategory.SOUP,
+    ingredients: ['2 tomatoes', '1 tsp salt'],
+    steps: ['Boil tomatoes', 'Blend until smooth'],
+    ...overrides,
+  });
+
+  const buildCreateRecipeInput = (
+    overrides: Partial<CreateRecipeInput> = {},
+  ): CreateRecipeInput => ({
+    title: 'Tomato Soup',
+    description: 'A warm classic',
+    category: RecipeCategory.SOUP,
+    prepTime: 30,
+    servings: 4,
+    ingredients: ['2 tomatoes', '1 tsp salt'],
+    steps: ['Boil tomatoes', 'Blend until smooth'],
+    authorId: 'author-1',
     ...overrides,
   });
 
@@ -29,6 +45,7 @@ describe('RecipesService', () => {
     const repositoryMock: Partial<jest.Mocked<RecipesRepository>> = {
       findVisible: jest.fn(),
       findById: jest.fn(),
+      create: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -49,7 +66,9 @@ describe('RecipesService', () => {
 
   describe('findVisible', () => {
     it('delegates to repository.findVisible with the given filters and userId', async () => {
-      const filters: RecipeQuerySearchDto = { category: 'soup' } as RecipeQuerySearchDto;
+      const filters: RecipeQuerySearchDto = {
+        category: RecipeCategory.SOUP,
+      } as RecipeQuerySearchDto;
       const recipes = [buildRecipe()];
       repository.findVisible.mockResolvedValue(recipes);
 
@@ -145,6 +164,75 @@ describe('RecipesService', () => {
       expect(notFoundError).toBeInstanceOf(NotFoundException);
       expect(notAccessibleError).toBeInstanceOf(NotFoundException);
       expect(notFoundError.getStatus()).toBe(notAccessibleError.getStatus());
+    });
+  });
+
+  describe('create', () => {
+    it('delegates to repository.create with the given input', async () => {
+      const input = buildCreateRecipeInput();
+      const recipe = buildRecipe();
+      repository.create.mockResolvedValue(recipe);
+
+      const result = await service.create(input);
+
+      expect(repository.create).toHaveBeenCalledWith(input);
+      expect(repository.create).toHaveBeenCalledTimes(1);
+      expect(result).toBe(recipe);
+    });
+
+    it('passes authorId through to the repository', async () => {
+      const input = buildCreateRecipeInput({ authorId: 'specific-user-id' });
+      repository.create.mockResolvedValue(buildRecipe({ authorId: 'specific-user-id' }));
+
+      await service.create(input);
+
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ authorId: 'specific-user-id' }),
+      );
+    });
+
+    it('passes all required fields through to the repository', async () => {
+      const input = buildCreateRecipeInput({
+        title: 'My Recipe',
+        description: 'My Description',
+        category: RecipeCategory.DINNER,
+        prepTime: 45,
+        servings: 2,
+        ingredients: ['ingredient 1', 'ingredient 2'],
+        steps: ['step 1', 'step 2'],
+      });
+      repository.create.mockResolvedValue(buildRecipe());
+
+      await service.create(input);
+
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'My Recipe',
+          description: 'My Description',
+          category: RecipeCategory.DINNER,
+          prepTime: 45,
+          servings: 2,
+          ingredients: ['ingredient 1', 'ingredient 2'],
+          steps: ['step 1', 'step 2'],
+        }),
+      );
+    });
+
+    it('returns the created recipe from the repository', async () => {
+      const input = buildCreateRecipeInput();
+      const created = buildRecipe({ id: 'new-recipe-id', title: input.title });
+      repository.create.mockResolvedValue(created);
+
+      const result = await service.create(input);
+
+      expect(result).toBe(created);
+      expect(result.id).toBe('new-recipe-id');
+    });
+
+    it('propagates errors thrown by the repository', async () => {
+      repository.create.mockRejectedValue(new Error('db unavailable'));
+
+      await expect(service.create(buildCreateRecipeInput())).rejects.toThrow('db unavailable');
     });
   });
 });
