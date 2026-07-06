@@ -23,7 +23,8 @@ import {
   ApiNotFoundResponse,
   ApiConsumes,
   ApiBody,
-  ApiResponse,
+  ApiUnauthorizedResponse,
+  ApiBadRequestResponse,
   ApiExtraModels,
 } from '@nestjs/swagger';
 import { RecipesService } from './recipes.service';
@@ -33,7 +34,8 @@ import { RecipeResponse } from './dto/responses/recipe.response';
 import { CreateRecipeDto } from './dto/requests/create-recipe.dto';
 import { CreateRecipeInput } from './dto/inputs/create-recipe-input.dto';
 import { OptionalJwtAuthGuard } from '../auth/optional-auth-guard';
-import { User as AuthenticatedUser } from '../auth/interface/user.interface';
+import type { User as AuthenticatedUser } from '../auth/interface/user.interface';
+import { CurrentUser } from '../auth/decorators/current-user-decorator.dto';
 import { RecipeCategory } from './models/recipe.model';
 
 @Controller('recipes')
@@ -69,9 +71,9 @@ export class RecipesController {
   @Get()
   async findAll(
     @Query() query: RecipeQuerySearchDto,
-    @Request() req: { user: AuthenticatedUser | null },
+    @CurrentUser() user: AuthenticatedUser | null,
   ): Promise<RecipeSummaryResponse[] | RecipeResponse[]> {
-    const userId = req.user?.userId ?? null;
+    const userId = user?.userId ?? null;
 
     const recipes = await this.recipesService.findVisible(query, userId);
 
@@ -88,9 +90,9 @@ export class RecipesController {
   @Get(':id')
   async findOne(
     @Param('id') id: string,
-    @Request() req: { user: AuthenticatedUser | null },
+    @CurrentUser() user: AuthenticatedUser | null,
   ): Promise<RecipeResponse> {
-    const userId = req.user?.userId ?? null;
+    const userId = user?.userId ?? null;
 
     const recipe = await this.recipesService.findOne(id, userId);
 
@@ -125,9 +127,9 @@ export class RecipesController {
       },
     },
   })
-  @ApiResponse({ status: 201, type: RecipeResponse })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 400, description: 'Validation failed' })
+  @ApiOkResponse({ description: 'Recipe created successfully', type: RecipeResponse })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
   @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(FileInterceptor('coverImage'))
   @Post()
@@ -142,7 +144,7 @@ export class RecipesController {
       }),
     )
     coverImage: Express.Multer.File,
-    @Request() req: { user: AuthenticatedUser },
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<RecipeResponse> {
     const input: Omit<CreateRecipeInput, 'coverImageKey'> = {
       title: dto.title,
@@ -152,7 +154,7 @@ export class RecipesController {
       servings: dto.servings,
       ingredients: dto.ingredients,
       steps: dto.steps,
-      authorId: req.user.userId,
+      authorId: user.userId,
     };
 
     const recipe = await this.recipesService.create(input, coverImage);

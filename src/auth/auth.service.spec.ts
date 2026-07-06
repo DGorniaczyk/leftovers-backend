@@ -96,8 +96,6 @@ describe('AuthService', () => {
     jest.restoreAllMocks();
   });
 
-  // ... existing signUp / validateUser / login describe blocks stay unchanged ...
-
   describe('register', () => {
     const dto = {
       email: 'newuser@example.com',
@@ -118,7 +116,7 @@ describe('AuthService', () => {
       jest.spyOn(signUpRequestRepository, 'findByEmail').mockResolvedValue({
         id: 'req-1',
         email: dto.email,
-        expires_at: new Date(Date.now() + 1000 * 60 * 60), // future, not expired
+        expires_at: new Date(Date.now() + 1000 * 60 * 60),
       } as any);
 
       await expect(authService.register(dto)).rejects.toThrow(ConflictException);
@@ -213,7 +211,7 @@ describe('AuthService', () => {
         name: 'Test User',
         password_hash: 'hashed',
         token: confirmDto.token,
-        expires_at: new Date(Date.now() - 1000), // expired
+        expires_at: new Date(Date.now() - 1000),
       } as any);
 
       await expect(authService.confirmRegister(confirmDto)).rejects.toThrow('Token expired');

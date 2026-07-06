@@ -16,8 +16,15 @@ import { MailerService } from 'src/mailer/mailer.service';
 import { SignupRequestsRepository } from './signup-requests.repository';
 import { RegisterInput } from './dto/inputs/register.input';
 import { ConfirmRegisterInput } from './dto/inputs/confirm-register.input';
+import { ResetPasswordInput } from './dto/inputs/reset-password.input';
+import { ConfirmResetPasswordInput } from './dto/inputs/confirm-reset-password.input';
 
 interface RegisterJwtPayload {
+  sub: string;
+  email: string;
+}
+
+interface ResetPasswordJwtPayload {
   sub: string;
   email: string;
 }
@@ -151,7 +158,60 @@ export class AuthService {
     return { accessToken };
   }
 
-  async resetPassword(email: string){
-    
+  async resetPassword(input: ResetPasswordInput): Promise<{ message: string }> {
+    const user = await this.usersService.findByEmail(input.email);
+
+    if (!user) {
+      return { message: 'If this email is registered, a reset link has been sent.' };
+    }
+
+    const token = await this.jwtService.signAsync(
+      { sub: user.id, email: user.email },
+      {
+        secret: this.configService.getOrThrow<string>('RESET_PASSWORD_JWT_SECRET'),
+        expiresIn: '24h',
+      },
+    );
+
+    const pageUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const resetLink = `${pageUrl}/reset-password?token=${encodeURIComponent(token)}`;
+
+    await this.mailerService.sendEmail(
+      {
+        recipients: [{ address: user.email }],
+        subject: 'Reset your password',
+      },
+      {
+        template: 'reset-password',
+        context: { resetLink, name: user.name },
+      },
+    );
+
+    return { message: 'If this email is registered, a reset link has been sent.' };
+  }
+
+  async confirmPasswordReset(input: ConfirmResetPasswordInput): Promise<{ message: string }> {
+    let payload: ResetPasswordJwtPayload;
+
+    try {
+      payload = await this.jwtService.verifyAsync<ResetPasswordJwtPayload>(input.token, {
+        secret: this.configService.getOrThrow<string>('RESET_PASSWORD_JWT_SECRET'),
+      });
+    } catch (err) {
+      if (err instanceof TokenExpiredError) {
+        throw new BadRequestException('Token expired');
+      }
+      throw new BadRequestException('Invalid or expired token');
+    }
+
+    const user = await this.usersService.findByEmail(payload.email);
+    if (!user || user.id !== payload.sub) {
+      throw new BadRequestException('Invalid or expired token');
+    }
+
+    const passwordHash = await bcrypt.hash(input.newPassword, bcrypt.genSaltSync());
+    await this.usersService.updatePassword(user.id, passwordHash);
+
+    return { message: 'Password has been reset successfully.' };
   }
 }
