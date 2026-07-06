@@ -103,9 +103,9 @@ export class AuthController {
     },
   })
   @Post('confirm-register')
+  @HttpCode(HttpStatus.OK)
   async confirmRegistration(@Body() dto: ConfirmRegisterDto): Promise<ConfirmRegisterResponse> {
     const input: ConfirmRegisterInput = {
-      email: dto.email,
       token: dto.token,
     };
 
