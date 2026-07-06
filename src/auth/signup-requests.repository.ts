@@ -22,7 +22,7 @@ export class SignupRequestsRepository {
       data: {
         email: input.email,
         name: input.name,
-        password_hash: input.passwordHash,
+        password_hash: input.hashedPassword,
         expires_at: input.expiresAt,
       },
     });
@@ -38,7 +38,7 @@ export class SignupRequestsRepository {
       id: row.id,
       email: row.email,
       name: row.name,
-      passwordHash: row.password_hash,
+      hashedPassword: row.password_hash,
       expiresAt: row.expires_at,
     };
   }

@@ -3,7 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class ConfirmRegisterDto {
   @ApiProperty({
-    example: 'kmsdfp12ld256123sx',
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
   })
   @IsString()
   token: string;
