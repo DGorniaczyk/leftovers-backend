@@ -28,4 +28,6 @@ export class Recipe {
   category: RecipeCategory;
   ingredients: string[];
   steps: string[];
+  coverImageKey: string;
+  coverImageUrl: string;
 }

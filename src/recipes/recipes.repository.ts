@@ -77,6 +77,7 @@ export class RecipesRepository {
         ingredients: input.ingredients,
         steps: input.steps,
         author_id: input.authorId,
+        cover_image_key: input.coverImageKey,
         rating: 0,
         is_public: true,
       },
@@ -99,6 +100,8 @@ export class RecipesRepository {
       category: row.category as unknown as RecipeCategory,
       ingredients: row.ingredients,
       steps: row.steps,
+      coverImageKey: row.cover_image_key,
+      coverImageUrl: '',
     };
   }
 }

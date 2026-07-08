@@ -36,6 +36,7 @@ model recipe {
   category recipe_category
   ingredients String[]
   steps String[]
+  cover_image_key String
 }
 
 enum recipe_category {

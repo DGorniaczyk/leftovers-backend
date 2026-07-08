@@ -5,7 +5,10 @@ import request from 'supertest';
 import { randomUUID } from 'crypto';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { UploadService } from '../src/upload/upload.service';
 import { configureApp } from '../src/app.config';
+
+const FAKE_URL = 'https://s3.example.com/recipes/fake.jpg?signature=xxx';
 
 describe('GET /recipes (e2e)', () => {
   let app: INestApplication;
@@ -26,7 +29,14 @@ describe('GET /recipes (e2e)', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(UploadService)
+      .useValue({
+        upload: jest.fn().mockResolvedValue(undefined),
+        getFileUrl: jest.fn().mockResolvedValue(FAKE_URL),
+        remove: jest.fn().mockResolvedValue(true),
+      })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     configureApp(app);
@@ -54,6 +64,7 @@ describe('GET /recipes (e2e)', () => {
         category: 'SOUP',
         ingredients: ['tomato', 'salt'],
         steps: ['boil tomatoes', 'serve hot'],
+        cover_image_key: `recipes/e2e-public-${runId}.jpg`,
       },
     });
     publicRecipeId = publicRecipe.id;
@@ -70,6 +81,7 @@ describe('GET /recipes (e2e)', () => {
         category: 'DINNER',
         ingredients: ['beef', 'carrot'],
         steps: ['simmer for hours'],
+        cover_image_key: `recipes/e2e-private-own-${runId}.jpg`,
       },
     });
     ownPrivateRecipeId = ownPrivateRecipe.id;
@@ -86,6 +98,7 @@ describe('GET /recipes (e2e)', () => {
         category: 'SNACK',
         ingredients: ['chips'],
         steps: ['open bag'],
+        cover_image_key: `recipes/e2e-private-other-${runId}.jpg`,
       },
     });
     otherPrivateRecipeId = otherPrivateRecipe.id;
@@ -146,7 +159,19 @@ describe('GET /recipes (e2e)', () => {
 
     const recipe = response.body.find((r: { id: string }) => r.id === publicRecipeId);
     expect(recipe).toBeDefined();
-    expect(Object.keys(recipe).sort()).toEqual(['id', 'title', 'description', 'prepTime'].sort());
+    expect(Object.keys(recipe).sort()).toEqual(
+      ['id', 'title', 'description', 'prepTime', 'coverImageUrl'].sort(),
+    );
+  });
+
+  it('includes a presigned URL in summary response', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/recipes')
+      .query({ category: 'SOUP' })
+      .expect(200);
+
+    const recipe = response.body.find((r: { id: string }) => r.id === publicRecipeId);
+    expect(recipe.coverImageUrl).toBe(FAKE_URL);
   });
 
   it('returns full recipe details when details=true', async () => {
@@ -162,6 +187,8 @@ describe('GET /recipes (e2e)', () => {
       steps: ['boil tomatoes', 'serve hot'],
       isPublic: true,
       authorId: userOneId,
+      coverImageKey: `recipes/e2e-public-${runId}.jpg`,
+      coverImageUrl: FAKE_URL,
     });
   });
 
@@ -185,8 +212,8 @@ describe('GET /recipes (e2e)', () => {
       .expect(200);
 
     const ids = response.body.map((r: { id: string }) => r.id);
-    expect(ids).toContain(ownPrivateRecipeId); // rating 5
-    expect(ids).not.toContain(publicRecipeId); // rating 4
+    expect(ids).toContain(ownPrivateRecipeId);
+    expect(ids).not.toContain(publicRecipeId);
   });
 
   it('rejects an out-of-range rating query param with 400', async () => {

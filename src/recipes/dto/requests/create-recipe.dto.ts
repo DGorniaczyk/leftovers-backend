@@ -11,6 +11,7 @@ import {
   IsArray,
   ArrayMinSize,
 } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 import { RecipeCategory, ALLOWED_SERVINGS } from '../../models/recipe.model';
 
 export class CreateRecipeDto {
@@ -31,23 +32,27 @@ export class CreateRecipeDto {
   category: RecipeCategory;
 
   @ApiProperty({ minimum: 1, maximum: 600, example: 30, description: 'Minutes' })
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(600)
   prepTime: number;
 
   @ApiProperty({ enum: ALLOWED_SERVINGS, example: 4 })
+  @Type(() => Number)
   @IsInt()
   @IsIn(ALLOWED_SERVINGS as unknown as number[])
   servings: number;
 
   @ApiProperty({ type: [String], example: ['2 tomatoes', '1 tsp salt'] })
+  @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })
   ingredients: string[];
 
   @ApiProperty({ type: [String], example: ['Boil tomatoes', 'Blend until smooth'] })
+  @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })
