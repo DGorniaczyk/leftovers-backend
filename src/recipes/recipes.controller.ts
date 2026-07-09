@@ -79,6 +79,13 @@ export class RecipesController {
       : recipes.map((recipe) => RecipeSummaryResponse.from(recipe));
   }
 
+  @ApiOperation({ summary: 'List available recipe categories' })
+  @ApiOkResponse({ type: [String] })
+  @Get('categories')
+  getCategories(): string[] {
+    return Object.values(RecipeCategory);
+  }
+
   @ApiOperation({ summary: 'Get a single recipe by id' })
   @ApiBearerAuth()
   @ApiOkResponse({ type: RecipeResponse })

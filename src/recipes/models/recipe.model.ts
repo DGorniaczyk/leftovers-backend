@@ -1,14 +1,12 @@
 export enum RecipeCategory {
   BREAKFAST = 'BREAKFAST',
   LUNCH = 'LUNCH',
-  DINNER = 'DINNER',
   DESSERT = 'DESSERT',
   SNACK = 'SNACK',
-  APPETIZER = 'APPETIZER',
+  BAKING = 'BAKING',
   SOUP = 'SOUP',
   SALAD = 'SALAD',
-  BEVERAGE = 'BEVERAGE',
-  OTHER = 'OTHER',
+  DRINK = 'DRINK',
 }
 
 export const ALLOWED_SERVINGS = [1, 2, 4, 6, 8] as const;
