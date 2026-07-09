@@ -74,7 +74,6 @@ export class AuthController {
   async register(@Body() dto: SignUpDto): Promise<RegisterConfirmationSentResponse> {
     const input: RegisterInput = {
       email: dto.email,
-      name: dto.name,
       password: dto.password,
     };
 
