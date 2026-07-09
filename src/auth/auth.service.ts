@@ -37,6 +37,7 @@ export class AuthService {
   private readonly frontendUrl: string;
   private readonly registerJwtSecret: string;
   private readonly resetPasswordJwtService: JwtService;
+  private readonly bcryptSaltRounds: number;
   constructor(
     private readonly usersService: UsersService,
     private readonly usersRepository: UsersRepository,
@@ -50,6 +51,12 @@ export class AuthService {
     this.registerJwtSecret = this.configService.getOrThrow<string>('REGISTER_JWT_SECRET');
     this.frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     this.resetPasswordJwtService = this.resetPasswordJwtServiceInjected;
+    const roundsStr = this.configService.getOrThrow<string>('BCRYPT_SALT_ROUNDS');
+    const rounds = Number(roundsStr);
+    if (!Number.isInteger(rounds) || rounds < 1) {
+      throw new Error('Invalid BCRYPT_SALT_ROUNDS; must be a positive integer');
+    }
+    this.bcryptSaltRounds = rounds;
   }
 
   // This is to be depricated at a later date as we will be using the verify mail version
@@ -58,8 +65,7 @@ export class AuthService {
     if (existingUser) {
       throw new ConflictException('User already exists');
     }
-
-    const hashedPassword = await bcrypt.hash(password, bcrypt.genSaltSync());
+    const hashedPassword = await bcrypt.hash(password, this.bcryptSaltRounds);
     return this.usersService.create({ email, hashedPassword });
   }
 
@@ -80,7 +86,7 @@ export class AuthService {
       await this.signUpRequestRepository.deleteById(existingRequest.id);
     }
 
-    const hashedPassword = await bcrypt.hash(input.password, bcrypt.genSaltSync());
+    const hashedPassword = await bcrypt.hash(input.password, this.bcryptSaltRounds);
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const request = await this.signUpRequestRepository.create({
@@ -211,7 +217,7 @@ export class AuthService {
       throw new BadRequestException('Invalid or expired token');
     }
 
-    const passwordHash = await bcrypt.hash(input.newPassword, bcrypt.genSaltSync());
+    const passwordHash = await bcrypt.hash(input.newPassword, this.bcryptSaltRounds);
     await this.usersService.updatePassword(user.id, passwordHash);
 
     return { message: 'Password has been reset successfully.' };
