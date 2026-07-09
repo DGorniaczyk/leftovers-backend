@@ -94,7 +94,7 @@ describe('RecipesService', () => {
   });
 
   describe('findVisible', () => {
-    it('delegates to repository.findVisible with the given filters and userId', async () => {
+    it('should call the  method repository.findVisible with the given filters and userId', async () => {
       const filters: RecipeQuerySearchDto = {
         category: RecipeCategory.SOUP,
       } as RecipeQuerySearchDto;

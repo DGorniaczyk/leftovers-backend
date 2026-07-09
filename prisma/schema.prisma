@@ -36,7 +36,7 @@ model recipe {
   category recipe_category
   ingredients String[]
   steps String[]
-  cover_image_key String
+  cover_image_key String @default("")
 }
 
 enum recipe_category {

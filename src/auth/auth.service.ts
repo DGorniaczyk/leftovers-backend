@@ -5,10 +5,12 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Inject } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { UsersRepository } from '../users/users.repository';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { RESET_PASSWORD_TOKEN_JWT_SERVICE } from './reset-password-token.module';
 import { TokenExpiredError } from 'jsonwebtoken';
 import { User as AuthenticatedUser } from './interface/user.interface';
 import { User } from '../users/models/user.model';
@@ -16,22 +18,46 @@ import { MailerService } from 'src/mailer/mailer.service';
 import { SignupRequestsRepository } from './signup-requests.repository';
 import { RegisterInput } from './dto/inputs/register-input.dto';
 import { ConfirmRegisterInput } from './dto/inputs/confirm-register-input.dto';
+import { ResetPasswordInput } from './dto/inputs/reset-password.input';
+import { ConfirmResetPasswordInput } from './dto/inputs/confirm-reset-password.input';
+import { ResetPasswordResult } from './dto/reset-password-result.dto';
 
 interface RegisterJwtPayload {
   sub: string;
   email: string;
 }
 
+interface ResetPasswordJwtPayload {
+  sub: string;
+  email: string;
+}
+
 @Injectable()
 export class AuthService {
+  private readonly frontendUrl: string;
+  private readonly registerJwtSecret: string;
+  private readonly resetPasswordJwtService: JwtService;
+  private readonly bcryptSaltRounds: number;
   constructor(
     private readonly usersService: UsersService,
     private readonly usersRepository: UsersRepository,
     private readonly jwtService: JwtService,
+    @Inject(RESET_PASSWORD_TOKEN_JWT_SERVICE)
+    private readonly resetPasswordJwtServiceInjected: JwtService,
     private readonly mailerService: MailerService,
     private readonly configService: ConfigService,
     private readonly signUpRequestRepository: SignupRequestsRepository,
-  ) {}
+  ) {
+    this.registerJwtSecret = this.configService.getOrThrow<string>('REGISTER_JWT_SECRET');
+    this.frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    this.resetPasswordJwtService = this.resetPasswordJwtServiceInjected;
+    const roundsStr = this.configService.getOrThrow<string>('BCRYPT_SALT_ROUNDS');
+    const rounds = Number(roundsStr);
+    if (!Number.isInteger(rounds) || rounds < 1) {
+      throw new Error('Invalid BCRYPT_SALT_ROUNDS; must be a positive integer');
+    }
+    this.bcryptSaltRounds = rounds;
+  }
 
   // This is to be depricated at a later date as we will be using the verify mail version
   async signUp(email: string, password: string) {
@@ -39,8 +65,7 @@ export class AuthService {
     if (existingUser) {
       throw new ConflictException('User already exists');
     }
-
-    const hashedPassword = await bcrypt.hash(password, bcrypt.genSaltSync());
+    const hashedPassword = await bcrypt.hash(password, this.bcryptSaltRounds);
     return this.usersService.create({ email, hashedPassword });
   }
 
@@ -61,7 +86,7 @@ export class AuthService {
       await this.signUpRequestRepository.deleteById(existingRequest.id);
     }
 
-    const hashedPassword = await bcrypt.hash(input.password, bcrypt.genSaltSync());
+    const hashedPassword = await bcrypt.hash(input.password, this.bcryptSaltRounds);
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const request = await this.signUpRequestRepository.create({
@@ -74,13 +99,12 @@ export class AuthService {
     const token = await this.jwtService.signAsync(
       { sub: request.id, email: request.email },
       {
-        secret: this.configService.getOrThrow<string>('REGISTER_JWT_SECRET'),
+        secret: this.registerJwtSecret,
         expiresIn: '24h',
       },
     );
 
-    const pageUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
-    const confirmLink = `${pageUrl}/confirm-register?token=${encodeURIComponent(token)}`;
+    const confirmLink = `${this.frontendUrl}/confirm-register?token=${encodeURIComponent(token)}`;
 
     await this.mailerService.sendEmail(
       {
@@ -101,7 +125,7 @@ export class AuthService {
 
     try {
       payload = await this.jwtService.verifyAsync<RegisterJwtPayload>(input.token, {
-        secret: this.configService.getOrThrow<string>('REGISTER_JWT_SECRET'),
+        secret: this.registerJwtSecret,
       });
     } catch (err) {
       if (err instanceof TokenExpiredError) {
@@ -151,7 +175,51 @@ export class AuthService {
     return { accessToken };
   }
 
-  async resetPassword(email: string){
-    
+  async resetPassword(input: ResetPasswordInput): Promise<{ message: string }> {
+    const user = await this.usersService.findByEmail(input.email);
+
+    if (!user) {
+      return new ResetPasswordResult();
+    }
+
+    const token = await this.resetPasswordJwtService.signAsync({ sub: user.id, email: user.email });
+
+    const resetLink = `${this.frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
+
+    await this.mailerService.sendEmail(
+      {
+        recipients: [{ address: user.email }],
+        subject: 'Reset your password',
+      },
+      {
+        template: 'reset-password',
+        context: { resetLink, name: user.name },
+      },
+    );
+
+    return new ResetPasswordResult();
+  }
+
+  async confirmPasswordReset(input: ConfirmResetPasswordInput): Promise<{ message: string }> {
+    let payload: ResetPasswordJwtPayload;
+
+    try {
+      payload = await this.resetPasswordJwtService.verifyAsync<ResetPasswordJwtPayload>(input.token);
+    } catch (err) {
+      if (err instanceof TokenExpiredError) {
+        throw new BadRequestException('Token expired');
+      }
+      throw new BadRequestException('Invalid or expired token');
+    }
+
+    const user = await this.usersService.findByEmail(payload.email);
+    if (!user || user.id !== payload.sub) {
+      throw new BadRequestException('Invalid or expired token');
+    }
+
+    const passwordHash = await bcrypt.hash(input.newPassword, this.bcryptSaltRounds);
+    await this.usersService.updatePassword(user.id, passwordHash);
+
+    return { message: 'Password has been reset successfully.' };
   }
 }

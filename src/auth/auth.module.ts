@@ -9,12 +9,14 @@ import { PassportModule } from '@nestjs/passport';
 import { MailerModule } from 'src/mailer/mailer.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SignupRequestsRepository } from './signup-requests.repository';
+import { ResetPasswordTokenModule } from './reset-password-token.module';
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
     MailerModule,
+    ResetPasswordTokenModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
