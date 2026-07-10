@@ -8,10 +8,6 @@ export function configureApp(app: INestApplication) {
       exceptionFactory: (errors) => new BadRequestException(errors),
     }),
   );
-  app.enableCors({
-    origin: '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: ['Authorization', 'Content-Type', 'Accept', 'Origin', 'X-Requested-With'],
-  });
+  app.enableCors();
   return app;
 }

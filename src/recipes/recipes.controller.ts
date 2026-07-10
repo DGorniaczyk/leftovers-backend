@@ -33,7 +33,7 @@ import { OptionalJwtAuthGuard } from '../auth/optional-auth-guard';
 import type { User as AuthenticatedUser } from '../auth/interface/user.interface';
 import { CurrentUser } from '../auth/decorators/current-user-decorator.dto';
 import { RecipeCategory } from './models/recipe.model';
-import { parseFileOptions } from 'src/upload/constans/parseFileOptions';
+import { parseFileOptions } from 'src/upload/constants/parseFileOptions';
 
 @Controller('recipes')
 export class RecipesController {
