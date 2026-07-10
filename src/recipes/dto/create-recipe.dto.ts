@@ -57,11 +57,4 @@ export class CreateRecipeDto {
   @ArrayMinSize(1)
   @IsString({ each: true })
   steps: string[];
-
-  @ApiProperty({
-    type: 'string',
-    format: 'binary',
-    description: 'Cover image (JPEG/PNG/WebP, max 5MB)',
-  })
-  coverImage?: Express.Multer.File;
 }
