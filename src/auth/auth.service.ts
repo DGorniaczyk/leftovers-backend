@@ -174,7 +174,7 @@ export class AuthService {
     );
 
     const pageUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
-    const resetLink = `${pageUrl}/reset-password?token=${encodeURIComponent(token)}`;
+    const resetLink = `${pageUrl}/?modal=reset-password&token=${encodeURIComponent(token)}`;
 
     await this.mailerService.sendEmail(
       {
@@ -209,7 +209,7 @@ export class AuthService {
       throw new BadRequestException('Invalid or expired token');
     }
 
-    const passwordHash = await bcrypt.hash(input.newPassword, bcrypt.genSaltSync());
+    const passwordHash = await bcrypt.hash(input.password, bcrypt.genSaltSync());
     await this.usersService.updatePassword(user.id, passwordHash);
 
     return { message: 'Password has been reset successfully.' };

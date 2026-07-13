@@ -143,7 +143,7 @@ export class AuthController {
   async confirmResetPassword(@Body() dto: ConfirmResetPasswordDto): Promise<{ message: string }> {
     const input: ConfirmResetPasswordInput = {
       token: dto.token,
-      newPassword: dto.newPassword,
+      password: dto.password,
     };
     return this.authService.confirmPasswordReset(input);
   }
