@@ -8,7 +8,7 @@ export class SignupRequest {
 
 export class CreateSignupRequest {
   email: string;
-  name: string;
+  name?: string | null;
   hashedPassword: string;
   expiresAt: Date;
 }

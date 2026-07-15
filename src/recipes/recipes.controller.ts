@@ -4,14 +4,11 @@ import {
   Post,
   Param,
   Query,
-  Request,
   UseGuards,
   Body,
   UploadedFile,
   UseInterceptors,
   ParseFilePipe,
-  MaxFileSizeValidator,
-  FileTypeValidator,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
@@ -22,7 +19,6 @@ import {
   ApiBearerAuth,
   ApiNotFoundResponse,
   ApiConsumes,
-  ApiBody,
   ApiUnauthorizedResponse,
   ApiBadRequestResponse,
   ApiExtraModels,
@@ -37,6 +33,7 @@ import { OptionalJwtAuthGuard } from '../auth/optional-auth-guard';
 import type { User as AuthenticatedUser } from '../auth/interface/user.interface';
 import { CurrentUser } from '../auth/decorators/current-user-decorator.dto';
 import { RecipeCategory } from './models/recipe.model';
+import { parseFileOptions } from 'src/upload/constants/parseFileOptions';
 
 @Controller('recipes')
 export class RecipesController {
@@ -82,6 +79,13 @@ export class RecipesController {
       : recipes.map((recipe) => RecipeSummaryResponse.from(recipe));
   }
 
+  @ApiOperation({ summary: 'List available recipe categories' })
+  @ApiOkResponse({ type: [String] })
+  @Get('categories')
+  getCategories(): string[] {
+    return Object.values(RecipeCategory);
+  }
+
   @ApiOperation({ summary: 'Get a single recipe by id' })
   @ApiBearerAuth()
   @ApiOkResponse({ type: RecipeResponse })
@@ -102,32 +106,7 @@ export class RecipesController {
   @ApiOperation({ summary: 'Create a new recipe' })
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: [
-        'title',
-        'description',
-        'category',
-        'prepTime',
-        'servings',
-        'ingredients',
-        'steps',
-        'coverImage',
-      ],
-      properties: {
-        title: { type: 'string', maxLength: 100 },
-        description: { type: 'string', maxLength: 200 },
-        category: { type: 'string', enum: Object.values(RecipeCategory) },
-        prepTime: { type: 'integer', minimum: 1, maximum: 600 },
-        servings: { type: 'integer', enum: [1, 2, 4, 6, 8] },
-        ingredients: { type: 'array', items: { type: 'string' } },
-        steps: { type: 'array', items: { type: 'string' } },
-        coverImage: { type: 'string', format: 'binary' },
-      },
-    },
-  })
-  @ApiOkResponse({ description: 'Recipe created successfully', type: RecipeResponse })
+  @ApiOkResponse({ type: RecipeResponse })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiBadRequestResponse({ description: 'Validation failed' })
   @UseGuards(AuthGuard('jwt'))
@@ -135,18 +114,11 @@ export class RecipesController {
   @Post()
   async create(
     @Body() dto: CreateRecipeDto,
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
-          new FileTypeValidator({ fileType: /image\/(jpeg|png|webp)/ }),
-        ],
-      }),
-    )
+    @UploadedFile(new ParseFilePipe(parseFileOptions))
     coverImage: Express.Multer.File,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<RecipeResponse> {
-    const input: Omit<CreateRecipeInput, 'coverImageKey'> = {
+    const input: CreateRecipeInput = {
       title: dto.title,
       description: dto.description,
       category: dto.category,

@@ -1,8 +1,4 @@
-import {
-  INestApplication,
-  ValidationPipe,
-  BadRequestException,
-} from '@nestjs/common';
+import { INestApplication, ValidationPipe, BadRequestException } from '@nestjs/common';
 
 export function configureApp(app: INestApplication) {
   app.useGlobalPipes(
@@ -12,5 +8,6 @@ export function configureApp(app: INestApplication) {
       exceptionFactory: (errors) => new BadRequestException(errors),
     }),
   );
+  app.enableCors();
   return app;
 }

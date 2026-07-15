@@ -41,9 +41,6 @@ export class RecipeResponse {
   @ApiProperty({ type: [String] })
   steps: string[];
 
-  @ApiProperty({ description: 'S3 key of the cover image' })
-  coverImageKey: string;
-
   @ApiProperty({ description: 'Presigned URL to access the cover image (valid 1h)' })
   coverImageUrl: string;
 

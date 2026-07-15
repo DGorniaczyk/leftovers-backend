@@ -28,18 +28,19 @@ export class RecipesService {
     return this.withPresignedUrl(recipe);
   }
 
-  async create(
-    input: Omit<CreateRecipeInput, 'coverImageKey'>,
-    coverImage: Express.Multer.File,
-  ): Promise<Recipe> {
+  async create(input: CreateRecipeInput, coverImage: Express.Multer.File): Promise<Recipe> {
     const ext = extname(coverImage.originalname);
     const key = `recipes/${randomUUID()}${ext}`;
 
     await this.uploadService.upload(key, coverImage);
 
-    const recipe = await this.recipesRepository.create({ ...input, coverImageKey: key });
-
-    return this.withPresignedUrl(recipe);
+    try {
+      const recipe = await this.recipesRepository.create({ ...input, coverImageKey: key });
+      return this.withPresignedUrl(recipe);
+    } catch (err) {
+      await this.uploadService.remove(key);
+      throw err;
+    }
   }
 
   private async withPresignedUrl(recipe: Recipe): Promise<Recipe> {

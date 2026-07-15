@@ -7,7 +7,7 @@ import {
 } from '../generated/prisma/client';
 import { Recipe, RecipeCategory } from './models/recipe.model';
 import { RecipeQuerySearchDto } from './dto/recipe-query-search.dto';
-import { CreateRecipeInput } from './dto/inputs/create-recipe-input.dto';
+import { CreateRecipeInput, CreateRecipeData } from './dto/inputs/create-recipe-input.dto';
 
 @Injectable()
 export class RecipesRepository {
@@ -66,7 +66,7 @@ export class RecipesRepository {
     return row ? this.toDomain(row) : null;
   }
 
-  async create(input: CreateRecipeInput): Promise<Recipe> {
+  async create(input: CreateRecipeData): Promise<Recipe> {
     const row = await this.prisma.recipe.create({
       data: {
         title: input.title,

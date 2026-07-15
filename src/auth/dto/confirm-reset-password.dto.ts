@@ -21,5 +21,5 @@ export class ConfirmResetPasswordDto {
         'Password must be at least 8 characters long and include uppercase, lowercase, numbers, and symbols',
     },
   )
-  newPassword: string;
+  password: string;
 }

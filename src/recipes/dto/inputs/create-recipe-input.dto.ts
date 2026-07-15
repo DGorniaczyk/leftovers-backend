@@ -9,5 +9,8 @@ export class CreateRecipeInput {
   ingredients: string[];
   steps: string[];
   authorId: string;
+}
+
+export class CreateRecipeData extends CreateRecipeInput {
   coverImageKey: string;
 }
