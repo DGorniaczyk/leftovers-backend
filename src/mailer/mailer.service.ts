@@ -77,11 +77,7 @@ export class MailerService {
         const template = Handlebars.compile(mjmlTemplate);
         const mjml = template(mergedContext);
 
-        const { html: compiledHtml, errors } = await mjml2html(mjml);
-
-        if (errors.length) {
-          console.error(errors);
-        }
+        const { html: compiledHtml } = await mjml2html(mjml);
 
         html = compiledHtml;
       } catch (err) {
