@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import * as Handlebars from 'handlebars';
+import mjml2html from 'mjml';
 
 interface NormalizedRecipient {
   address: string;
@@ -68,11 +69,21 @@ export class MailerService {
 
     if (templateDto.template) {
       const srcRoot = path.resolve(process.cwd(), 'src');
-      const templatePath = path.join(srcRoot, 'mailer/templates', `${templateDto.template}.hbs`);
+      const templatePath = path.join(srcRoot, 'mailer/templates', `${templateDto.template}.mjml`);
+
       try {
-        const templateSource = await fs.readFile(templatePath, 'utf8');
-        const tpl = Handlebars.compile(templateSource);
-        html = tpl(mergedContext);
+        const mjmlTemplate = await fs.readFile(templatePath, 'utf8');
+
+        const template = Handlebars.compile(mjmlTemplate);
+        const mjml = template(mergedContext);
+
+        const { html: compiledHtml, errors } = await mjml2html(mjml);
+
+        if (errors.length) {
+          console.error(errors);
+        }
+
+        html = compiledHtml;
       } catch (err) {
         console.error('Failed to render template', err);
         throw err;
