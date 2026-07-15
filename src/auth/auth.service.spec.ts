@@ -111,7 +111,7 @@ describe('AuthService', () => {
       signUpRequestRepository.findByEmail.mockResolvedValue({
         id: 'req-1',
         email: dto.email,
-        expiresAt: new Date(Date.now() + 1000 * 60 * 60), // w przyszłości
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60), // In the future
       } as any);
 
       await expect(authService.register(dto)).rejects.toThrow(ConflictException);
@@ -122,7 +122,7 @@ describe('AuthService', () => {
       signUpRequestRepository.findByEmail.mockResolvedValue({
         id: 'expired-req',
         email: dto.email,
-        expiresAt: new Date(Date.now() - 1000), // w przeszłości
+        expiresAt: new Date(Date.now() - 1000), // In the past
       } as any);
 
       await authService.register(dto);
