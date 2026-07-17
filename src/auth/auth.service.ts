@@ -184,7 +184,7 @@ export class AuthService {
 
     const token = await this.resetPasswordJwtService.signAsync({ sub: user.id, email: user.email });
 
-    const resetLink = `${this.frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
+    const resetLink = `${this.frontendUrl}/?modal=reset-password&token=${encodeURIComponent(token)}`;
 
     await this.mailerService.sendEmail(
       {

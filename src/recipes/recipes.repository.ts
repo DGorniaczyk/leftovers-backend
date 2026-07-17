@@ -36,9 +36,6 @@ export class RecipesRepository {
     if (filters.category) {
       conditions.push({ category: filters.category as RecipeCategoryPrisma });
     }
-    if (filters.rating !== undefined) {
-      conditions.push({ rating: { gte: filters.rating } });
-    }
     if (filters.title) {
       conditions.push({ title: { contains: filters.title, mode: 'insensitive' } });
     }
@@ -78,7 +75,6 @@ export class RecipesRepository {
         steps: input.steps,
         author_id: input.authorId,
         cover_image_key: input.coverImageKey,
-        rating: 0,
         is_public: true,
       },
     });
@@ -96,7 +92,6 @@ export class RecipesRepository {
       authorId: row.author_id,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      rating: row.rating,
       category: row.category as unknown as RecipeCategory,
       ingredients: row.ingredients,
       steps: row.steps,

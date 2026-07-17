@@ -22,7 +22,6 @@ export class Recipe {
   authorId: string;
   createdAt: Date;
   updatedAt: Date;
-  rating: number;
   category: RecipeCategory;
   ingredients: string[];
   steps: string[];

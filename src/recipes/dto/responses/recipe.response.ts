@@ -29,9 +29,6 @@ export class RecipeResponse {
   @ApiProperty()
   updatedAt: Date;
 
-  @ApiProperty()
-  rating: number;
-
   @ApiProperty({ enum: RecipeCategory })
   category: RecipeCategory;
 
