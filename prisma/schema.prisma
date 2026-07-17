@@ -20,6 +20,7 @@ model users {
   password String
   recipes recipe[]
   saved saved_recipe[]
+  ratings recipe_rating[]
 }
 
 model recipe {
@@ -33,7 +34,7 @@ model recipe {
   servings Int
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
-  rating Int
+  ratings recipe_rating[]
   category recipe_category
   ingredients String[]
   steps String[]
@@ -67,6 +68,19 @@ model saved_recipe {
   user_id String
   recipe_id String
   saved_at DateTime @default(now())
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  recipe recipe @relation(fields: [recipe_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, recipe_id])
+}
+
+model recipe_rating {
+  user_id String
+  recipe_id String
+  rating Int
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
   recipe recipe @relation(fields: [recipe_id], references: [id], onDelete: Cascade)
