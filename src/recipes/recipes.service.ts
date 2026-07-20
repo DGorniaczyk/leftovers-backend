@@ -6,11 +6,17 @@ import { Recipe } from './models/recipe.model';
 import { RecipeQuerySearchDto } from './dto/recipe-query-search.dto';
 import { CreateRecipeInput } from './dto/inputs/create-recipe-input.dto';
 import { UploadService } from '../upload/upload.service';
+import { RecipeRatingsRepository } from './recipe-rating.repository';
+import { SavedRecipesRepository } from './saved-recipe.repository';
+import { RecipeRating } from './models/recipe-rating.model';
+import { SavedRecipe } from './models/saved-recipe.model';
 
 @Injectable()
 export class RecipesService {
   constructor(
     private readonly recipesRepository: RecipesRepository,
+    private readonly recipeRatingsRepository: RecipeRatingsRepository,
+    private readonly savedRecipesRepository: SavedRecipesRepository,
     private readonly uploadService: UploadService,
   ) {}
 
@@ -26,6 +32,39 @@ export class RecipesService {
       throw new NotFoundException('Recipe not found');
     }
     return this.withPresignedUrl(recipe);
+  }
+
+  async rateRecipe(recipeId: string, userId: string, rating: number): Promise<RecipeRating> {
+    const recipe = await this.recipesRepository.findById(recipeId);
+    const hasAccess = recipe && (recipe.isPublic || recipe.authorId === userId);
+    if (!hasAccess) {
+      throw new NotFoundException('Recipe not found');
+    }
+
+    return this.recipeRatingsRepository.upsert({ userId, recipeId, rating });
+  }
+
+  async saveRecipe(recipeId: string, userId: string): Promise<SavedRecipe> {
+    const recipe = await this.recipesRepository.findById(recipeId);
+    const hasAccess = recipe && (recipe.isPublic || recipe.authorId === userId);
+    if (!hasAccess) {
+      throw new NotFoundException('Recipe not found');
+    }
+
+    return this.savedRecipesRepository.save(userId, recipeId);
+  }
+
+  async unsaveRecipe(recipeId: string, userId: string): Promise<void> {
+    await this.savedRecipesRepository.unsave(userId, recipeId);
+  }
+
+  async getSavedRecipes(userId: string): Promise<Recipe[]> {
+    const saved = await this.savedRecipesRepository.findByUser(userId);
+    const recipes = await Promise.all(
+      saved.map((s) => this.recipesRepository.findById(s.recipeId)),
+    );
+    const validRecipes = recipes.filter((r): r is Recipe => r !== null);
+    return this.withPresignedUrls(validRecipes);
   }
 
   async create(input: CreateRecipeInput, coverImage: Express.Multer.File): Promise<Recipe> {

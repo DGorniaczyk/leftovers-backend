@@ -14,6 +14,12 @@ export class RecipeSummaryResponse {
   @ApiPropertyOptional()
   prepTime: number | null;
 
+  @ApiPropertyOptional({ nullable: true })
+  averageRating: number | null;
+
+  @ApiProperty()
+  ratingsCount: number;
+
   @ApiProperty({ description: 'Presigned URL to access the cover image (valid 1h)' })
   coverImageUrl: string;
 
