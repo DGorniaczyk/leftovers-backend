@@ -28,6 +28,8 @@ export class RecipeSummaryResponse {
       id: recipe.id,
       title: recipe.title,
       description: recipe.description,
+      averageRating: recipe.averageRating,
+      ratingsCount: recipe.ratingsCount,
       prepTime: recipe.prepTime,
       coverImageUrl: recipe.coverImageUrl,
     };
