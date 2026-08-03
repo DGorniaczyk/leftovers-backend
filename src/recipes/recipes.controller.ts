@@ -9,6 +9,9 @@ import {
   UploadedFile,
   UseInterceptors,
   ParseFilePipe,
+  Delete,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
@@ -21,6 +24,7 @@ import {
   ApiConsumes,
   ApiUnauthorizedResponse,
   ApiBadRequestResponse,
+  ApiNoContentResponse,
   ApiExtraModels,
 } from '@nestjs/swagger';
 import { RecipesService } from './recipes.service';
@@ -34,6 +38,9 @@ import type { User as AuthenticatedUser } from '../auth/interface/user.interface
 import { CurrentUser } from '../auth/decorators/current-user-decorator.dto';
 import { RecipeCategory } from './models/recipe.model';
 import { parseFileOptions } from 'src/upload/constants/parseFileOptions';
+import { RateRecipeDto } from './dto/requests/rate-recipe.dto';
+import { RecipeRatingResponse } from './dto/responses/recipe-rating.response';
+import { SavedRecipeResponse } from './dto/responses/saved-recipe.response';
 
 @Controller('recipes')
 export class RecipesController {
@@ -84,6 +91,61 @@ export class RecipesController {
   @Get('categories')
   getCategories(): string[] {
     return Object.values(RecipeCategory);
+  }
+
+  @ApiOperation({ summary: 'Rate a recipe (1-5 stars, can be updated)' })
+  @ApiBearerAuth()
+  @ApiOkResponse({ type: RecipeRatingResponse })
+  @ApiNotFoundResponse({ description: 'Recipe not found or not accessible' })
+  @ApiBadRequestResponse({ description: 'Invalid rating value' })
+  @UseGuards(AuthGuard('jwt'))
+  @Post(':id/rate')
+  @HttpCode(HttpStatus.OK)
+  async rateRecipe(
+    @Param('id') id: string,
+    @Body() dto: RateRecipeDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<RecipeRatingResponse> {
+    const rating = await this.recipesService.rateRecipe(id, user.userId, dto.rating);
+    return RecipeRatingResponse.from(rating);
+  }
+
+  @ApiOperation({ summary: 'Save a recipe to your collection' })
+  @ApiBearerAuth()
+  @ApiOkResponse({ type: SavedRecipeResponse })
+  @ApiNotFoundResponse({ description: 'Recipe not found or not accessible' })
+  @UseGuards(AuthGuard('jwt'))
+  @Post(':id/save')
+  @HttpCode(HttpStatus.OK)
+  async saveRecipe(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<SavedRecipeResponse> {
+    const saved = await this.recipesService.saveRecipe(id, user.userId);
+    return SavedRecipeResponse.from(saved);
+  }
+
+  @ApiOperation({ summary: 'Remove a recipe from your saved collection' })
+  @ApiBearerAuth()
+  @ApiNoContentResponse({ description: 'Recipe removed from saved' })
+  @UseGuards(AuthGuard('jwt'))
+  @Delete(':id/save')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async unsaveRecipe(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<void> {
+    await this.recipesService.unsaveRecipe(id, user.userId);
+  }
+
+  @ApiOperation({ summary: 'Get all recipes saved by the authenticated user' })
+  @ApiBearerAuth()
+  @ApiOkResponse({ type: [RecipeResponse] })
+  @UseGuards(AuthGuard('jwt'))
+  @Get('saved')
+  async getSavedRecipes(@CurrentUser() user: AuthenticatedUser): Promise<RecipeResponse[]> {
+    const recipes = await this.recipesService.getSavedRecipes(user.userId);
+    return recipes.map((recipe) => RecipeResponse.from(recipe));
   }
 
   @ApiOperation({ summary: 'Get a single recipe by id' })

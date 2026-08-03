@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsOptional, IsString, IsInt, IsBoolean, Min, Max } from 'class-validator';
+import { IsOptional, IsString, IsInt, IsBoolean, Min, Max, IsIn } from 'class-validator';
 
 export class RecipeQuerySearchDto {
   @ApiPropertyOptional()
@@ -51,4 +51,12 @@ export class RecipeQuerySearchDto {
   @Type(() => Boolean)
   @IsBoolean()
   details?: boolean;
+
+  @IsOptional()
+  @IsIn(['date', 'rating'])
+  sortBy?: 'date' | 'rating';
+
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  sortDirection?: 'asc' | 'desc';
 }

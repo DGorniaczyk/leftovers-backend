@@ -25,9 +25,13 @@ export class RecipesRepository {
     const rows = await this.prisma.recipe.findMany({
       where,
       orderBy: { created_at: 'desc' },
+      include: {
+        _count: { select: { ratings: true } },
+        ratings: { select: { rating: true } },
+      },
     });
 
-    return rows.map((row) => this.toDomain(row));
+    return rows.map((row) => this.toDomainWithRating(row));
   }
 
   private buildFilterConditions(filters: RecipeQuerySearchDto): Prisma.recipeWhereInput[] {
@@ -35,9 +39,6 @@ export class RecipesRepository {
 
     if (filters.category) {
       conditions.push({ category: filters.category as RecipeCategoryPrisma });
-    }
-    if (filters.rating !== undefined) {
-      conditions.push({ rating: { gte: filters.rating } });
     }
     if (filters.title) {
       conditions.push({ title: { contains: filters.title, mode: 'insensitive' } });
@@ -62,8 +63,14 @@ export class RecipesRepository {
   }
 
   async findById(id: string): Promise<Recipe | null> {
-    const row = await this.prisma.recipe.findUnique({ where: { id } });
-    return row ? this.toDomain(row) : null;
+    const row = await this.prisma.recipe.findUnique({
+      where: { id },
+      include: {
+        _count: { select: { ratings: true } },
+        ratings: { select: { rating: true } },
+      },
+    });
+    return row ? this.toDomainWithRating(row) : null;
   }
 
   async create(input: CreateRecipeData): Promise<Recipe> {
@@ -78,14 +85,35 @@ export class RecipesRepository {
         steps: input.steps,
         author_id: input.authorId,
         cover_image_key: input.coverImageKey,
-        rating: 0,
         is_public: true,
       },
     });
-    return this.toDomain(row);
+
+    return {
+      ...this.toDomain(row),
+      averageRating: null,
+      ratingsCount: 0,
+    };
   }
 
-  private toDomain(row: RecipeRow): Recipe {
+  private toDomainWithRating(
+    row: RecipeRow & {
+      ratings: { rating: number }[];
+      _count: { ratings: number };
+    },
+  ): Recipe {
+    const ratingsCount = row._count.ratings;
+    const averageRating =
+      ratingsCount > 0 ? row.ratings.reduce((sum, r) => sum + r.rating, 0) / ratingsCount : null;
+
+    return {
+      ...this.toDomain(row),
+      averageRating,
+      ratingsCount,
+    };
+  }
+
+  private toDomain(row: RecipeRow): Omit<Recipe, 'averageRating' | 'ratingsCount'> {
     return {
       id: row.id,
       title: row.title,
@@ -96,7 +124,6 @@ export class RecipesRepository {
       authorId: row.author_id,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      rating: row.rating,
       category: row.category as unknown as RecipeCategory,
       ingredients: row.ingredients,
       steps: row.steps,

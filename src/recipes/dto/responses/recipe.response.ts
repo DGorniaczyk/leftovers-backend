@@ -29,8 +29,11 @@ export class RecipeResponse {
   @ApiProperty()
   updatedAt: Date;
 
+  @ApiPropertyOptional({ nullable: true })
+  averageRating: number | null;
+
   @ApiProperty()
-  rating: number;
+  ratingsCount: number;
 
   @ApiProperty({ enum: RecipeCategory })
   category: RecipeCategory;

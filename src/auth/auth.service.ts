@@ -184,7 +184,7 @@ export class AuthService {
 
     const token = await this.resetPasswordJwtService.signAsync({ sub: user.id, email: user.email });
 
-    const resetLink = `${this.frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
+    const resetLink = `${this.frontendUrl}/?modal=reset-password&token=${encodeURIComponent(token)}`;
 
     await this.mailerService.sendEmail(
       {
@@ -204,7 +204,9 @@ export class AuthService {
     let payload: ResetPasswordJwtPayload;
 
     try {
-      payload = await this.resetPasswordJwtService.verifyAsync<ResetPasswordJwtPayload>(input.token);
+      payload = await this.resetPasswordJwtService.verifyAsync<ResetPasswordJwtPayload>(
+        input.token,
+      );
     } catch (err) {
       if (err instanceof TokenExpiredError) {
         throw new BadRequestException('Token expired');
@@ -217,7 +219,7 @@ export class AuthService {
       throw new BadRequestException('Invalid or expired token');
     }
 
-    const passwordHash = await bcrypt.hash(input.newPassword, this.bcryptSaltRounds);
+    const passwordHash = await bcrypt.hash(input.password, this.bcryptSaltRounds);
     await this.usersService.updatePassword(user.id, passwordHash);
 
     return { message: 'Password has been reset successfully.' };
