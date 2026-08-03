@@ -24,6 +24,7 @@ import {
   ApiConsumes,
   ApiUnauthorizedResponse,
   ApiBadRequestResponse,
+  ApiNoContentResponse,
   ApiExtraModels,
 } from '@nestjs/swagger';
 import { RecipesService } from './recipes.service';
@@ -96,6 +97,7 @@ export class RecipesController {
   @ApiBearerAuth()
   @ApiOkResponse({ type: RecipeRatingResponse })
   @ApiNotFoundResponse({ description: 'Recipe not found or not accessible' })
+  @ApiBadRequestResponse({ description: 'Invalid rating value' })
   @UseGuards(AuthGuard('jwt'))
   @Post(':id/rate')
   @HttpCode(HttpStatus.OK)
@@ -125,7 +127,7 @@ export class RecipesController {
 
   @ApiOperation({ summary: 'Remove a recipe from your saved collection' })
   @ApiBearerAuth()
-  @ApiOkResponse({ description: 'Recipe removed from saved' })
+  @ApiNoContentResponse({ description: 'Recipe removed from saved' })
   @UseGuards(AuthGuard('jwt'))
   @Delete(':id/save')
   @HttpCode(HttpStatus.NO_CONTENT)
