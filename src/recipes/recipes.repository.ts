@@ -24,14 +24,38 @@ export class RecipesRepository {
 
     const rows = await this.prisma.recipe.findMany({
       where,
-      orderBy: { created_at: 'desc' },
       include: {
         _count: { select: { ratings: true } },
         ratings: { select: { rating: true } },
       },
     });
 
-    return rows.map((row) => this.toDomainWithRating(row));
+    const withRating = rows.map((row) => this.toDomainWithRating(row));
+
+    let result = withRating;
+
+    if (filters.rating !== null) {
+      result = result.filter((r) => (r.averageRating ?? 0) >= filters.rating!);
+    }
+
+    const sortBy = filters.sortBy ?? 'date';
+    const sortDir: 'asc' | 'desc' = filters.sortDirection ?? 'desc';
+
+    if (sortBy === 'rating') {
+      result = result.sort((a, b) => {
+        const aVal = a.averageRating ?? 0;
+        const bVal = b.averageRating ?? 0;
+        return sortDir === 'desc' ? bVal - aVal : aVal - bVal;
+      });
+    } else {
+      result = result.sort((a, b) => {
+        const aTime = new Date(a.createdAt).getTime();
+        const bTime = new Date(b.createdAt).getTime();
+        return sortDir === 'desc' ? bTime - aTime : aTime - bTime;
+      });
+    }
+
+    return result;
   }
 
   private buildFilterConditions(filters: RecipeQuerySearchDto): Prisma.recipeWhereInput[] {
