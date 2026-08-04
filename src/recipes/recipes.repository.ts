@@ -34,7 +34,7 @@ export class RecipesRepository {
 
     let result = withRating;
 
-    if (filters.rating !== undefined && filters.rating !== null) {
+    if (filters.rating !== null) {
       result = result.filter((r) => (r.averageRating ?? 0) >= filters.rating!);
     }
 
